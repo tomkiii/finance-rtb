@@ -1081,7 +1081,7 @@ body.admin-readonly .add-form,
 body.admin-readonly #add-job-btn,
 body.admin-readonly .del,
 body.admin-readonly input,
-body.admin-readonly button:not(#admin-exit-btn):not(#logout-btn){
+body.admin-readonly button:not(#admin-exit-btn):not(#logout-btn):not(.tab){
   pointer-events: none !important;
   opacity: .55 !important;
 }
@@ -1199,37 +1199,48 @@ let viewingUid = null;   // ak nie je null, pozeráme cudzie dáta (read-only)
 let viewingEmail = null;
 
 function skAuthError(err){
+  console.error('Auth chyba:', err.code, err.message);
   const map = {
     'auth/invalid-email': 'Neplatný email.',
     'auth/user-not-found': 'Účet s týmto emailom neexistuje. Skús sa registrovať.',
     'auth/wrong-password': 'Nesprávne heslo.',
     'auth/invalid-credential': 'Nesprávny email alebo heslo.',
+    'auth/invalid-login-credentials': 'Nesprávny email alebo heslo.',
     'auth/email-already-in-use': 'Tento email už má vytvorený účet. Skús sa prihlásiť.',
     'auth/weak-password': 'Heslo musí mať aspoň 6 znakov.',
     'auth/missing-password': 'Zadaj heslo.',
+    'auth/missing-email': 'Zadaj email.',
+    'auth/too-many-requests': 'Príliš veľa pokusov. Skús to o chvíľu.',
     'auth/network-request-failed': 'Chyba siete, skús to znova.'
   };
-  return map[err.code] || ('Chyba: ' + err.message);
+  return map[err.code] || ('Chyba: ' + (err.message || 'neznáma chyba, skús to znova.'));
 }
 
-document.getElementById('auth-login').addEventListener('click', async ()=>{
+async function doLogin(){
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   const errEl = document.getElementById('auth-error');
   errEl.textContent = '';
+  if(!email || !password){ errEl.textContent = 'Vyplň email aj heslo.'; return; }
   try{
     await auth.signInWithEmailAndPassword(email, password);
   }catch(e){ errEl.textContent = skAuthError(e); }
-});
-document.getElementById('auth-register').addEventListener('click', async ()=>{
+}
+async function doRegister(){
   const email = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   const errEl = document.getElementById('auth-error');
   errEl.textContent = '';
+  if(!email || !password){ errEl.textContent = 'Vyplň email aj heslo.'; return; }
   try{
     await auth.createUserWithEmailAndPassword(email, password);
   }catch(e){ errEl.textContent = skAuthError(e); }
-});
+}
+
+document.getElementById('auth-login').addEventListener('click', doLogin);
+document.getElementById('auth-register').addEventListener('click', doRegister);
+document.getElementById('auth-email').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+document.getElementById('auth-password').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
 document.getElementById('logout-btn').addEventListener('click', ()=> auth.signOut());
 
 auth.onAuthStateChanged(async user=>{
