@@ -1085,6 +1085,100 @@ body.admin-readonly button:not(#admin-exit-btn):not(#logout-btn):not(.tab){
   pointer-events: none !important;
   opacity: .55 !important;
 }
+
+/* Financie */
+.finance-tabs{
+  display:flex;
+  gap:8px;
+  margin-bottom:16px;
+}
+.finance-tabs button{
+  font-family:'IBM Plex Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-soft);
+  cursor: pointer;
+}
+.finance-tabs button.active{
+  background: var(--blue);
+  border-color: var(--blue);
+  color: #0E1420;
+  font-weight:600;
+}
+.finance-summary{
+  display:flex;
+  gap:12px;
+  margin-bottom:18px;
+  flex-wrap:wrap;
+}
+.finance-summary .card{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 18px;
+  flex: 1;
+  min-width: 140px;
+}
+.finance-summary .card .lbl{
+  font-family:'IBM Plex Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-soft);
+  display:block;
+  margin-bottom: 6px;
+}
+.finance-summary .card .val{
+  font-size: 20px;
+  font-weight: 700;
+}
+.finance-summary .card.income .val{ color: var(--green); }
+.finance-summary .card.expense .val{ color: var(--red); }
+.finance-entry{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.finance-entry .fe-left{
+  display:flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.finance-entry .fe-cat{
+  font-weight: 600;
+}
+.finance-entry .fe-meta{
+  font-family:'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--text-soft);
+}
+.finance-entry .fe-amt{
+  font-weight: 700;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.finance-entry .fe-amt.income{ color: var(--green); }
+.finance-entry .fe-amt.expense{ color: var(--red); }
+.finance-cat-breakdown{
+  margin-top: 22px;
+}
+.finance-cat-row{
+  display:flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
 </style>
 </head>
 <body>
@@ -1135,6 +1229,7 @@ body.admin-readonly button:not(#admin-exit-btn):not(#logout-btn):not(.tab){
     <button class="tab" data-tab="recurring">Opakované</button>
     <button class="tab" data-tab="monthly">Mesačne</button>
     <button class="tab" data-tab="workers">Brigádnici</button>
+    <button class="tab" data-tab="finance">Financie</button>
   </div>
 
   <div id="view-jobs">
@@ -1170,6 +1265,8 @@ body.admin-readonly button:not(#admin-exit-btn):not(#logout-btn):not(.tab){
   <div id="view-recurring" style="display:none;"></div>
 
   <div id="view-workers" style="display:none;"></div>
+
+  <div id="view-finance" style="display:none;"></div>
 
   <footer>Údaje sa ukladajú automaticky do cloudu · viditeľné iba tebe</footer>
 </div>
@@ -1265,7 +1362,11 @@ auth.onAuthStateChanged(async user=>{
 
 const PRESET_WORKERS = ['Emka','Denisa','Laura','Tomáš','Lucia','Sara','Juraj'];
 
-let state = { jobs: [], settings: { rate: 10 }, templates: [] };
+const DEFAULT_FINANCE_CATEGORIES = {
+  expense: ['Tankovanie', 'Čistiace prostriedky', 'Nájom', 'Strava', 'Náradie a materiál', 'Poistenie', 'Telefón/internet', 'Doprava', 'Ostatné'],
+  income: ['Mzda', 'Predaj', 'Prenájom', 'Dividendy', 'Ostatné']
+};
+let state = { jobs: [], settings: { rate: 10 }, templates: [], finance: { entries: [], customCategories: { income: [], expense: [] } } };
 let expanded = {};
 let expandedTpl = {};
 let selectedJobs = new Set();
@@ -1319,7 +1420,13 @@ async function load(){
     const docSnap = await db.collection('userData').doc(targetUid).get();
     if(docSnap.exists && docSnap.data() && docSnap.data().state){
       const parsed = JSON.parse(docSnap.data().state);
-      state = Object.assign({ jobs: [], settings: { rate: 10 }, templates: [] }, parsed);
+      state = Object.assign({ jobs: [], settings: { rate: 10 }, templates: [], finance: { entries: [], customCategories: { income: [], expense: [] } } }, parsed);
+      if(!state.finance) state.finance = { entries: [], customCategories: { income: [], expense: [] } };
+      if(!state.finance.entries) state.finance.entries = [];
+      if(!state.finance.customCategories) state.finance.customCategories = { income: [], expense: [] };
+      if(!state.finance.customCategories.income) state.finance.customCategories.income = [];
+      if(!state.finance.customCategories.expense) state.finance.customCategories.expense = [];
+      state.finance.entries.forEach(e=>{ if(!e.account) e.account = 'osobny'; });
       if(!state.templates) state.templates = [];
       state.templates.forEach(t=>{
         if(!t.weekdays){
@@ -1336,7 +1443,7 @@ async function load(){
         });
       });
     } else {
-      state = { jobs: [], settings: { rate: 10 }, templates: [] };
+      state = { jobs: [], settings: { rate: 10 }, templates: [], finance: { entries: [], customCategories: { income: [], expense: [] } } };
     }
   }catch(e){
     console.error('Načítanie zlyhalo', e);
@@ -1384,6 +1491,7 @@ async function openAdminPanel(){
   document.getElementById('view-monthly').style.display = 'none';
   document.getElementById('view-recurring').style.display = 'none';
   document.getElementById('view-workers').style.display = 'none';
+  document.getElementById('view-finance').style.display = 'none';
 
   const listEl = document.getElementById('admin-users-list');
   listEl.textContent = 'Načítavam...';
@@ -1413,6 +1521,7 @@ function closeAdminPanel(){
   document.getElementById('view-monthly').style.display = activeTab==='monthly' ? '' : 'none';
   document.getElementById('view-recurring').style.display = activeTab==='recurring' ? '' : 'none';
   document.getElementById('view-workers').style.display = activeTab==='workers' ? '' : 'none';
+  document.getElementById('view-finance').style.display = activeTab==='finance' ? '' : 'none';
   render();
 }
 
@@ -1817,6 +1926,152 @@ function renderWorkers(){
   `).join('');
 }
 
+let financeAccountFilter = 'osobny';
+
+function financeCategories(type){
+  return DEFAULT_FINANCE_CATEGORIES[type].concat(state.finance.customCategories[type] || []);
+}
+
+function fmtSigned(n, type){
+  return (type==='income' ? '+' : '−') + fmt(Math.abs(n));
+}
+
+function renderFinance(){
+  const el = document.getElementById('view-finance');
+  const entries = state.finance.entries.filter(e => e.account === financeAccountFilter);
+  const income = entries.filter(e=>e.type==='income').reduce((s,e)=>s+Number(e.amount||0),0);
+  const expense = entries.filter(e=>e.type==='expense').reduce((s,e)=>s+Number(e.amount||0),0);
+  const net = income - expense;
+
+  const catOptions = (type) => financeCategories(type).map(c=>`<option value="${c}">${c}</option>`).join('') + `<option value="__new__">+ Pridať kategóriu…</option>`;
+
+  const addForm = `
+    <div class="add-form">
+      <div class="field">
+        <label for="fin-date">Dátum</label>
+        <input type="date" id="fin-date" value="${new Date().toISOString().slice(0,10)}">
+      </div>
+      <div class="field">
+        <label for="fin-type">Typ</label>
+        <select id="fin-type">
+          <option value="expense">Výdavok</option>
+          <option value="income">Príjem</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="fin-category">Kategória</label>
+        <select id="fin-category">${catOptions('expense')}</select>
+      </div>
+      <div class="field price">
+        <label for="fin-amount">Suma (€)</label>
+        <input type="number" id="fin-amount" placeholder="0" step="0.01">
+      </div>
+      <div class="field note">
+        <label for="fin-note">Poznámka</label>
+        <input type="text" id="fin-note" placeholder="napr. na čo presne">
+      </div>
+      <button class="btn" id="fin-add-btn">+ Pridať</button>
+    </div>
+  `;
+
+  const summary = `
+    <div class="finance-summary">
+      <div class="card income"><span class="lbl">Príjmy</span><span class="val">${fmt(income)}</span></div>
+      <div class="card expense"><span class="lbl">Výdavky</span><span class="val">${fmt(expense)}</span></div>
+      <div class="card"><span class="lbl">Zostatok</span><span class="val" style="color:${net>=0?'var(--green)':'var(--red)'}">${fmt(net)}</span></div>
+    </div>
+  `;
+
+  const sorted = entries.slice().sort((a,b)=> b.date.localeCompare(a.date));
+  const list = sorted.length === 0
+    ? `<div class="empty">Zatiaľ žiadne záznamy na tomto účte.</div>`
+    : sorted.map(e => `
+      <div class="finance-entry" data-fin-id="${e.id}">
+        <div class="fe-left">
+          <span class="fe-cat">${e.category}${e.note ? ' · ' + e.note : ''}</span>
+          <span class="fe-meta">${e.date}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="fe-amt ${e.type}">${fmtSigned(Number(e.amount||0), e.type)}</span>
+          <button class="del" data-fin-del="${e.id}" title="Odstrániť">✕</button>
+        </div>
+      </div>
+    `).join('');
+
+  const byCat = {};
+  entries.filter(e=>e.type==='expense').forEach(e=>{
+    byCat[e.category] = (byCat[e.category]||0) + Number(e.amount||0);
+  });
+  const catRows = Object.keys(byCat).sort((a,b)=>byCat[b]-byCat[a]);
+  const breakdown = catRows.length === 0 ? '' : `
+    <div class="finance-cat-breakdown">
+      <h3 style="margin-bottom:4px;">Výdavky podľa kategórie</h3>
+      ${catRows.map(c=>`<div class="finance-cat-row"><span>${c}</span><span>${fmt(byCat[c])}</span></div>`).join('')}
+    </div>
+  `;
+
+  el.innerHTML = `
+    <div class="finance-tabs">
+      <button data-fin-account="osobny" class="${financeAccountFilter==='osobny'?'active':''}">Osobný účet</button>
+      <button data-fin-account="firemny" class="${financeAccountFilter==='firemny'?'active':''}">Firemný účet</button>
+    </div>
+    ${addForm}
+    ${summary}
+    ${list}
+    ${breakdown}
+  `;
+
+  document.getElementById('fin-type').addEventListener('change', (e)=>{
+    document.getElementById('fin-category').innerHTML = catOptions(e.target.value);
+  });
+  document.getElementById('fin-category').addEventListener('change', (e)=>{
+    if(e.target.value === '__new__'){
+      const name = prompt('Názov novej kategórie:');
+      const type = document.getElementById('fin-type').value;
+      if(name && name.trim()){
+        if(!state.finance.customCategories[type].includes(name.trim())){
+          state.finance.customCategories[type].push(name.trim());
+          scheduleSave();
+        }
+        document.getElementById('fin-category').innerHTML = catOptions(type);
+        document.getElementById('fin-category').value = name.trim();
+      } else {
+        document.getElementById('fin-category').value = financeCategories(type)[0];
+      }
+    }
+  });
+  document.getElementById('fin-add-btn').addEventListener('click', ()=>{
+    const date = document.getElementById('fin-date').value || new Date().toISOString().slice(0,10);
+    const type = document.getElementById('fin-type').value;
+    const category = document.getElementById('fin-category').value;
+    const amount = parseFloat(document.getElementById('fin-amount').value);
+    const note = document.getElementById('fin-note').value.trim();
+    if(category === '__new__' || !amount || amount <= 0){
+      alert('Zadaj platnú sumu (a kategóriu).');
+      return;
+    }
+    state.finance.entries.push({
+      id: 'f' + Date.now() + Math.random().toString(36).slice(2,7),
+      date, type, category, amount, note, account: financeAccountFilter
+    });
+    scheduleSave();
+    renderFinance();
+  });
+  el.querySelectorAll('[data-fin-del]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.finance.entries = state.finance.entries.filter(e=>e.id !== btn.dataset.finDel);
+      scheduleSave();
+      renderFinance();
+    });
+  });
+  el.querySelectorAll('[data-fin-account]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      financeAccountFilter = btn.dataset.finAccount;
+      renderFinance();
+    });
+  });
+}
+
 function renderMonthlyChartSVG(byMonth){
   const keys = Object.keys(byMonth).sort((a,b)=> a.localeCompare(b));
   const recentKeys = keys.slice(-12);
@@ -2074,6 +2329,7 @@ function render(){
   if(activeTab === 'jobs'){ renderJobs(); }
   else if(activeTab === 'monthly'){ renderMonthly(); }
   else if(activeTab === 'recurring'){ renderRecurring(); }
+  else if(activeTab === 'finance'){ renderFinance(); }
   else { renderWorkers(); }
 }
 
@@ -2085,6 +2341,7 @@ document.querySelectorAll('.tab').forEach(btn=>{
     document.getElementById('view-monthly').style.display = activeTab==='monthly' ? '' : 'none';
     document.getElementById('view-recurring').style.display = activeTab==='recurring' ? '' : 'none';
     document.getElementById('view-workers').style.display = activeTab==='workers' ? '' : 'none';
+    document.getElementById('view-finance').style.display = activeTab==='finance' ? '' : 'none';
     render();
   });
 });
