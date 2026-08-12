@@ -1077,6 +1077,14 @@
   }
   .sync-dot.saving{ background: var(--amber); }
   .sync-dot.error{ background: var(--red); }
+body.admin-readonly .add-form,
+body.admin-readonly #add-job-btn,
+body.admin-readonly .del,
+body.admin-readonly input,
+body.admin-readonly button:not(#admin-exit-btn):not(#logout-btn){
+  pointer-events: none !important;
+  opacity: .55 !important;
+}
 </style>
 </head>
 <body>
@@ -1105,7 +1113,19 @@
   <div class="user-bar">
     <span><span class="sync-dot" id="sync-dot"></span><span id="sync-label">Uložené</span></span>
     <span class="email" id="user-email"></span>
+    <button class="btn ghost small" id="admin-btn" style="display:none;">🛡 Admin</button>
     <button class="btn ghost small" id="logout-btn">Odhlásiť sa</button>
+  </div>
+
+  <div id="admin-banner" style="display:none; background:#fff3cd; border:1px solid #ffe08a; border-radius:8px; padding:10px 14px; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+    <span>👁 Prezeráš dáta používateľa <strong id="admin-banner-email"></strong> — iba na čítanie, nič sa neukladá.</span>
+    <button class="btn ghost small" id="admin-exit-btn">Späť do môjho účtu</button>
+  </div>
+
+  <div id="admin-panel" style="display:none;">
+    <h2 style="margin-top:0;">Admin — všetci používatelia</h2>
+    <div id="admin-users-list"></div>
+    <button class="btn ghost small" id="admin-close-btn" style="margin-top:10px;">Zavrieť admin panel</button>
   </div>
 
   <div class="totals" id="totals"></div>
@@ -1174,6 +1194,9 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 let currentUser = null;
+let isAdmin = false;
+let viewingUid = null;   // ak nie je null, pozeráme cudzie dáta (read-only)
+let viewingEmail = null;
 
 function skAuthError(err){
   const map = {
@@ -1209,7 +1232,7 @@ document.getElementById('auth-register').addEventListener('click', async ()=>{
 });
 document.getElementById('logout-btn').addEventListener('click', ()=> auth.signOut());
 
-auth.onAuthStateChanged(user=>{
+auth.onAuthStateChanged(async user=>{
   currentUser = user;
   const overlay = document.getElementById('auth-overlay');
   const appWrap = document.getElementById('app-wrap');
@@ -1217,6 +1240,11 @@ auth.onAuthStateChanged(user=>{
     overlay.style.display = 'none';
     appWrap.style.display = '';
     document.getElementById('user-email').textContent = user.email;
+
+    const token = await user.getIdTokenResult();
+    isAdmin = token.claims.admin === true;
+    document.getElementById('admin-btn').style.display = isAdmin ? '' : 'none';
+
     load();
   }else{
     overlay.style.display = 'flex';
@@ -1275,8 +1303,9 @@ function setSyncStatus(mode){
 
 async function load(){
   if(!currentUser) return;
+  const targetUid = viewingUid || currentUser.uid;
   try{
-    const docSnap = await db.collection('userData').doc(currentUser.uid).get();
+    const docSnap = await db.collection('userData').doc(targetUid).get();
     if(docSnap.exists && docSnap.data() && docSnap.data().state){
       const parsed = JSON.parse(docSnap.data().state);
       state = Object.assign({ jobs: [], settings: { rate: 10 }, templates: [] }, parsed);
@@ -1312,9 +1341,11 @@ function scheduleSave(){
 }
 async function save(){
   if(!currentUser) return;
+  if(viewingUid){ return; } // admin read-only režim — nič sa neukladá
   try{
     await db.collection('userData').doc(currentUser.uid).set({
       state: JSON.stringify(state),
+      email: currentUser.email,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     setSyncStatus('ok');
@@ -1323,6 +1354,72 @@ async function save(){
     setSyncStatus('error');
   }
 }
+
+// ====== ADMIN REŽIM ======
+function setAdminUiLock(locked){
+  document.getElementById('admin-banner').style.display = locked ? 'flex' : 'none';
+  document.getElementById('admin-banner-email').textContent = viewingEmail || viewingUid || '';
+  // v read-only režime skryjeme formuláre na pridávanie/úpravu
+  document.querySelectorAll('.add-form, #add-job-btn, .del, [id^="add-"], [id^="tpl-"]').forEach(()=>{});
+  document.body.classList.toggle('admin-readonly', locked);
+}
+
+async function openAdminPanel(){
+  if(!isAdmin) return;
+  document.getElementById('admin-panel').style.display = '';
+  document.getElementById('totals').style.display = 'none';
+  document.querySelector('.tabs').style.display = 'none';
+  document.getElementById('view-jobs').style.display = 'none';
+  document.getElementById('view-monthly').style.display = 'none';
+  document.getElementById('view-recurring').style.display = 'none';
+  document.getElementById('view-workers').style.display = 'none';
+
+  const listEl = document.getElementById('admin-users-list');
+  listEl.textContent = 'Načítavam...';
+  try{
+    const snap = await db.collection('userData').get();
+    if(snap.empty){ listEl.textContent = 'Žiadni používatelia.'; return; }
+    listEl.innerHTML = snap.docs.map(d=>{
+      const data = d.data();
+      const email = data.email || '(bez emailu — starší záznam)';
+      const updated = data.updatedAt && data.updatedAt.toDate ? data.updatedAt.toDate().toLocaleString('sk-SK') : '—';
+      return `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #eee;">
+        <span><strong>${email}</strong><br><small style="color:#888;">${d.id} · naposledy upravené: ${updated}</small></span>
+        <button class="btn ghost small" data-admin-view="${d.id}" data-admin-email="${email}">Zobraziť</button>
+      </div>`;
+    }).join('');
+  }catch(e){
+    console.error(e);
+    listEl.textContent = 'Nepodarilo sa načítať zoznam (skontroluj Firestore rules).';
+  }
+}
+
+function closeAdminPanel(){
+  document.getElementById('admin-panel').style.display = 'none';
+  document.getElementById('totals').style.display = '';
+  document.querySelector('.tabs').style.display = '';
+  render();
+}
+
+document.getElementById('admin-btn').addEventListener('click', openAdminPanel);
+document.getElementById('admin-close-btn').addEventListener('click', closeAdminPanel);
+
+document.getElementById('admin-users-list').addEventListener('click', async (e)=>{
+  const btn = e.target.closest('[data-admin-view]');
+  if(!btn) return;
+  viewingUid = btn.dataset.adminView;
+  viewingEmail = btn.dataset.adminEmail;
+  closeAdminPanel();
+  setAdminUiLock(true);
+  await load();
+});
+
+document.getElementById('admin-exit-btn').addEventListener('click', async ()=>{
+  viewingUid = null;
+  viewingEmail = null;
+  setAdminUiLock(false);
+  await load();
+});
 
 function paymentAmount(p){
   if(p.mode === 'hours') return (Number(p.value)||0) * rate();
