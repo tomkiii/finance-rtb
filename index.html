@@ -1398,6 +1398,10 @@ function closeAdminPanel(){
   document.getElementById('admin-panel').style.display = 'none';
   document.getElementById('totals').style.display = '';
   document.querySelector('.tabs').style.display = '';
+  document.getElementById('view-jobs').style.display = activeTab==='jobs' ? '' : 'none';
+  document.getElementById('view-monthly').style.display = activeTab==='monthly' ? '' : 'none';
+  document.getElementById('view-recurring').style.display = activeTab==='recurring' ? '' : 'none';
+  document.getElementById('view-workers').style.display = activeTab==='workers' ? '' : 'none';
   render();
 }
 
