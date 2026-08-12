@@ -1,0 +1,2422 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prehľad financií</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #14161B;
+    --surface: #1B1E25;
+    --surface-2: #22262F;
+    --border: #2C303A;
+    --text: #EDEEF2;
+    --text-soft: #8A8F9C;
+    --green: #4ADE9A;
+    --green-dim: rgba(74,222,154,0.12);
+    --amber: #F2B84B;
+    --amber-dim: rgba(242,184,75,0.12);
+    --blue: #5FA8FF;
+    --blue-dim: rgba(95,168,255,0.12);
+    --red: #FF6B6B;
+    --red-dim: rgba(255,107,107,0.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height:100vh;
+  }
+  .wrap{
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+  header{
+    margin-bottom: 24px;
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-soft);
+  }
+  h1{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 32px;
+    margin: 4px 0 0;
+    letter-spacing: -0.02em;
+  }
+
+  .rate-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin: 0 0 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .rate-row span{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-soft);
+  }
+  .rate-row input{
+    width: 64px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+  }
+
+  /* Stat cards */
+  .totals{
+    display:grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin: 22px 0 28px;
+  }
+  .stat.net{
+    border-color: var(--green);
+  }
+  .stat{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .stat .label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-soft);
+  }
+  .stat .value{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 21px;
+    margin-top: 5px;
+  }
+  .stat.green .value{ color: var(--green); }
+  .stat.amber .value{ color: var(--amber); }
+  .stat.blue .value{ color: var(--blue); }
+
+  /* Tabs */
+  .tabs{
+    display:flex;
+    gap: 4px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 9px 2px;
+    margin-right: 22px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-soft);
+    cursor: pointer;
+  }
+  .tab.active{
+    color: var(--text);
+    border-bottom-color: var(--blue);
+    font-weight: 600;
+  }
+
+  /* Add job form */
+  .add-form{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 22px;
+    display:flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+  .field{
+    display:flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .field label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-soft);
+  }
+  .field input{
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface-2);
+    color: var(--text);
+    min-width: 130px;
+  }
+  .field input::-webkit-calendar-picker-indicator{ filter: invert(0.8); }
+  .field input:focus{ outline: 2px solid var(--blue); outline-offset: 1px; }
+  .field.client input{ min-width: 200px; }
+  .field.price input{ min-width: 100px; }
+  .field.duration input{ min-width: 90px; }
+  .btn{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 10px 16px;
+    border-radius: 7px;
+    border: 1px solid var(--blue);
+    background: var(--blue);
+    color: #0E1420;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn:hover{ opacity: 0.88; }
+  .btn.ghost{
+    background: transparent;
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .btn.small{ padding: 6px 10px; font-size: 11px; }
+  .btn:focus-visible{ outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  /* Job cards */
+  .job{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px 4px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .job-row{
+    display:flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    padding: 12px 12px;
+  }
+  .job-row .date{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-soft);
+    width: 78px;
+    flex-shrink: 0;
+  }
+  .job-row .client{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    flex: 1;
+  }
+  .badge{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .badge.green{ background: var(--green-dim); color: var(--green); }
+  .badge.amber{ background: var(--amber-dim); color: var(--amber); }
+  .badge.red{ background: var(--red-dim); color: var(--red); }
+  .job-row .price{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .job-row .chevron{
+    color: var(--text-soft);
+    transition: transform 0.15s ease;
+    flex-shrink: 0;
+    font-size: 12px;
+  }
+  .job.expanded .chevron{ transform: rotate(90deg); }
+
+  .job-body{
+    display: none;
+    padding: 4px 16px 16px;
+    border-top: 1px solid var(--border);
+    margin-top: 2px;
+  }
+  .job.expanded .job-body{ display: block; }
+
+  .client-paid-toggle{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    margin: 12px 0 14px;
+    padding: 10px 12px;
+    background: var(--surface-2);
+    border-radius: 8px;
+  }
+  .client-paid-toggle span{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text-soft);
+    flex: 1;
+  }
+  .switch{
+    position: relative;
+    width: 40px; height: 22px;
+    flex-shrink:0;
+  }
+  .switch input{ display:none; }
+  .switch .track{
+    position:absolute; inset:0;
+    background: var(--border);
+    border-radius: 20px;
+    transition: background 0.15s;
+    cursor:pointer;
+  }
+  .switch .thumb{
+    position:absolute; top:3px; left:3px;
+    width:16px; height:16px;
+    background: var(--text-soft);
+    border-radius:50%;
+    transition: all 0.15s;
+  }
+  .switch input:checked + .track{ background: var(--green-dim); border: 1px solid var(--green); }
+  .switch input:checked + .track .thumb{ transform: translateX(18px); background: var(--green); }
+
+  .section-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-soft);
+    margin: 4px 0 8px;
+  }
+
+  .quick-add{
+    display:flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .chip{
+    font-family:'Inter', sans-serif;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    cursor: pointer;
+  }
+  .chip:hover{ border-color: var(--blue); color: var(--blue); }
+
+  .payment-row{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    padding: 8px 0;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .payment-row:first-child{ border-top: none; }
+  .payment-row input[type=text]{
+    font-family:'Inter', sans-serif;
+    font-size: 13.5px;
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--text);
+    flex: 1;
+    min-width: 90px;
+  }
+  .payment-row input[type=number]{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 13.5px;
+    padding: 7px 9px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--text);
+    width: 74px;
+  }
+  .mode-toggle{
+    display:flex;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow:hidden;
+    flex-shrink:0;
+  }
+  .mode-toggle button{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    padding: 7px 9px;
+    background: var(--surface-2);
+    color: var(--text-soft);
+    border: none;
+    cursor:pointer;
+  }
+  .mode-toggle button.active{
+    background: var(--blue-dim);
+    color: var(--blue);
+  }
+  .payment-amount{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--text-soft);
+    width: 68px;
+    text-align: right;
+    flex-shrink:0;
+  }
+  .payment-row label.paid-check{
+    display:flex;
+    align-items:center;
+    gap: 5px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-soft);
+    white-space: nowrap;
+  }
+  .payment-row .del{
+    background:none;
+    border:none;
+    color: var(--red);
+    cursor:pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+    flex-shrink:0;
+  }
+  .job-actions{
+    display:flex;
+    gap: 10px;
+    margin-top: 12px;
+    align-items:center;
+  }
+  .job-actions .del-job{
+    background:none;
+    border:none;
+    color: var(--text-soft);
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-decoration: underline;
+    cursor:pointer;
+    margin-left: auto;
+  }
+
+  .empty{
+    padding: 40px 10px;
+    text-align:center;
+    color: var(--text-soft);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+  }
+
+  /* Worker summary tab */
+  .worker-card{
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    display:flex;
+    align-items:center;
+    gap: 16px;
+  }
+  .worker-card .name{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    flex: 1;
+  }
+  .worker-card .figures{
+    display:flex;
+    gap: 18px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+  }
+  .worker-card .figures .col{ text-align: right; }
+  .worker-card .figures .lbl{
+    display:block;
+    font-size: 9px;
+    text-transform:uppercase;
+    letter-spacing:0.07em;
+    color: var(--text-soft);
+  }
+  .worker-card .figures .owed-v{ color: var(--amber); font-weight:600; }
+  .worker-card .figures .paid-v{ color: var(--green); font-weight:600; }
+
+  .field.note input{ min-width: 220px; }
+
+  .job-row .client-col{
+    flex: 1;
+    min-width: 0;
+    display:flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .job-row .client{ flex: none; }
+  .job-row .note-preview{
+    font-family:'Inter', sans-serif;
+    font-size: 12px;
+    color: var(--text-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .note-field{
+    margin: 12px 0 14px;
+  }
+  .note-field label{
+    display:block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-soft);
+    margin-bottom: 6px;
+  }
+  .note-field textarea{
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface-2);
+    color: var(--text);
+    resize: vertical;
+    min-height: 44px;
+  }
+  .note-field textarea:focus{ outline: 2px solid var(--blue); outline-offset: 1px; }
+
+  /* Monthly overview */
+  .month-card{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .month-head{
+    display:flex;
+    align-items:center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .month-head .m-name{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    flex: 1;
+  }
+  .month-head .m-count{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-soft);
+  }
+  .month-stats{
+    display:grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+  }
+  .month-stats .m-stat{
+    padding: 12px 16px;
+    border-right: 1px solid var(--border);
+  }
+  .month-stats .m-stat:last-child{ border-right: none; }
+  .month-stats .m-stat .lbl{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-soft);
+    display:block;
+  }
+  .month-stats .m-stat .val{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+  .month-stats .m-stat.green .val{ color: var(--green); }
+  .month-stats .m-stat.amber .val{ color: var(--amber); }
+  .month-stats .m-stat.blue .val{ color: var(--blue); }
+  .month-stats .m-stat.net .val{ color: var(--green); font-weight: 700; }
+
+  .chart-card{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 16px 6px;
+    margin-bottom: 18px;
+  }
+  .chart-legend{
+    display:flex;
+    gap: 16px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--text-soft);
+  }
+  .chart-legend span{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .chart-legend i{
+    display:inline-block;
+    width:10px;
+    height:10px;
+    border-radius:3px;
+  }
+  .chart-hit{ cursor:pointer; }
+  .chart-tooltip{
+    position: fixed;
+    pointer-events: none;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text);
+    opacity: 0;
+    transform: translate(-50%, -100%);
+    transition: opacity 0.1s ease;
+    z-index: 50;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  }
+  .chart-tooltip.visible{ opacity: 1; }
+  .chart-tooltip .tt-label{ color: var(--text-soft); margin-right:6px; }
+  .chart-tooltip strong{ color: var(--text); }
+
+  @media (max-width: 600px){
+    .month-stats{ grid-template-columns: repeat(2, 1fr); }
+    .month-stats .m-stat{ border-right: none; border-bottom: 1px solid var(--border); }
+  }
+
+  /* Recurring templates */
+  .template-card{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .template-head{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .template-head .t-client{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    flex: 1;
+  }
+  .template-head .t-price{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .freq-badge{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background: var(--blue-dim);
+    color: var(--blue);
+  }
+  .t-note{
+    font-family:'Inter', sans-serif;
+    font-size: 12.5px;
+    color: var(--text-soft);
+    margin-bottom: 10px;
+  }
+  .t-workers{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text-soft);
+    margin-bottom: 12px;
+  }
+  .gen-row{
+    display:flex;
+    align-items:flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .gen-row .field input{ min-width: 130px; }
+  .gen-status{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--green);
+    margin-top: 8px;
+  }
+  .template-actions{
+    display:flex;
+    margin-top: 10px;
+  }
+  .template-actions .del-tpl{
+    background:none;
+    border:none;
+    color: var(--text-soft);
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-decoration: underline;
+    cursor:pointer;
+    margin-left: auto;
+  }
+
+  .new-template-form{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 22px;
+  }
+  .new-template-form .row1{
+    display:flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-bottom: 12px;
+  }
+  .field select{
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface-2);
+    color: var(--text);
+  }
+  .tpl-payment-row{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    padding: 6px 0;
+    flex-wrap: wrap;
+  }
+
+  /* Filter bar */
+  .filter-bar{
+    margin-bottom: 16px;
+  }
+  .month-nav{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .month-nav-label{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    flex: 1;
+  }
+  .filter-controls{
+    display:flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items:center;
+  }
+  .filter-controls input[type=text]{
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text);
+    flex: 1;
+    min-width: 160px;
+  }
+  .filter-controls select{
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text);
+  }
+  .unpaid-check{
+    display:flex;
+    align-items:center;
+    gap: 6px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text-soft);
+    white-space: nowrap;
+  }
+  .filter-controls input[type=text]:focus,
+  .filter-controls select:focus{ outline: 2px solid var(--blue); outline-offset: 1px; }
+
+  .month-summary{
+    display:flex;
+    align-items:center;
+    gap: 6px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-soft);
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .month-summary .ms-earned{ color: var(--green); font-weight:600; }
+  .month-summary .dot{ opacity:0.5; }
+
+  /* Mini calendar */
+  .mini-cal{
+    margin-bottom: 14px;
+  }
+  .mini-cal-weekdays{
+    display:grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 4px;
+  }
+  .mini-cal-weekdays span{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-soft);
+    text-align:center;
+  }
+  .mini-cal-grid{
+    display:grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+  .mini-cal-day{
+    aspect-ratio: 1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius: 6px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-soft);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    position: relative;
+  }
+  .mini-cal-day.empty{ background: none; border-color: transparent; }
+  .mini-cal-day.has-jobs{ cursor:pointer; color: var(--text); border-color: transparent; }
+  .mini-cal-day.has-jobs:hover{ outline: 1px solid var(--blue); outline-offset: -1px; }
+  .mini-cal-day.tier-1{ background: var(--blue-dim); }
+  .mini-cal-day.tier-2{ background: rgba(95,168,255,0.28); }
+  .mini-cal-day.tier-3{ background: var(--blue); color: #0F1116; font-weight:700; }
+  .mini-cal-day.is-today{ border-color: var(--green); }
+  .mini-cal-day.has-unpaid::after{
+    content:'';
+    position:absolute;
+    top: 3px;
+    right: 3px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--amber);
+  }
+  .mini-cal-legend{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    margin-top: 8px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-soft);
+  }
+  .mini-cal-legend .swatch{
+    display:inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    margin-right: 4px;
+    vertical-align: -1px;
+  }
+
+  @keyframes flashHighlight{
+    0%{ background: var(--blue-dim); border-radius: 10px; }
+    100%{ background: transparent; }
+  }
+  .day-group.flash-highlight{ animation: flashHighlight 1.3s ease; }
+
+  .badge.blue{ background: var(--blue-dim); color: var(--blue); }
+  .job-row .recur-hide{
+    background:none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-soft);
+    cursor:pointer;
+    font-size: 12px;
+    padding: 4px 6px;
+    flex-shrink:0;
+    line-height:1;
+  }
+  .job-row .recur-hide:hover{ color: var(--blue); border-color: var(--blue); }
+  .job.is-hidden .job-row{ opacity: 0.5; }
+  .job.is-archived{ border-color: var(--red); border-style: dashed; }
+  .job.is-archived .job-row{ opacity: 0.6; }
+
+  /* Day groups */
+  .day-group{ margin-bottom: 18px; }
+  .day-head{
+    display:flex;
+    align-items:baseline;
+    gap: 10px;
+    padding: 4px 2px 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+  .day-head .day-name{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-soft);
+    flex: 1;
+  }
+  .day-head .day-count{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: var(--text-soft);
+  }
+  .day-head .day-sum{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--blue);
+  }
+
+  .day-select{
+    display:flex;
+    gap: 6px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .day-chip{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-soft);
+    cursor: pointer;
+  }
+  .day-chip.active{
+    background: var(--blue-dim);
+    border-color: var(--blue);
+    color: var(--blue);
+  }
+
+  footer{
+    margin-top: 30px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-soft);
+    text-align: center;
+  }
+
+  @media (max-width: 600px){
+    .totals{ grid-template-columns: repeat(2, 1fr); }
+    .job-row .client{ font-size: 14px; }
+  }
+  @media (min-width: 601px) and (max-width: 900px){
+    .totals{ grid-template-columns: repeat(3, 1fr); }
+  }
+
+  /* Inline edit row */
+  .edit-row{
+    display:flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 4px 0 14px;
+  }
+  .edit-row .field input{ min-width: 0; width: 100%; }
+  .edit-row .field.client{ flex: 1 1 160px; }
+  .edit-row .field.date{ flex: 0 0 140px; }
+  .edit-row .field.price{ flex: 0 0 110px; }
+  .edit-row .field.duration{ flex: 0 0 130px; }
+
+  /* Bulk select */
+  .select-check{
+    display:flex;
+    align-items:center;
+    flex-shrink: 0;
+  }
+  .select-check input{
+    width: 16px;
+    height: 16px;
+    accent-color: var(--blue);
+    cursor: pointer;
+  }
+  .bulk-bar{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--blue);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+  }
+  .bulk-bar .count{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+    flex: 1;
+  }
+
+  /* Auth overlay */
+  .auth-overlay{
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+  }
+  .auth-box{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px 26px;
+    width: 100%;
+    max-width: 340px;
+  }
+  .auth-box h2{
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 20px;
+    margin: 0 0 4px;
+  }
+  .auth-box .auth-sub{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text-soft);
+    margin-bottom: 18px;
+  }
+  .auth-box input{
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-2);
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+  .auth-box input:focus{ outline: 2px solid var(--blue); outline-offset: 1px; }
+  .auth-actions{
+    display:flex;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .auth-actions .btn{ flex: 1; }
+  .auth-error{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--red);
+    margin-top: 10px;
+    min-height: 14px;
+  }
+  .auth-status{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-soft);
+    margin-top: 12px;
+    text-align: center;
+  }
+  .user-bar{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    margin-bottom: 18px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--text-soft);
+  }
+  .user-bar .email{ flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sync-dot{
+    display:inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 5px;
+    flex-shrink: 0;
+  }
+  .sync-dot.saving{ background: var(--amber); }
+  .sync-dot.error{ background: var(--red); }
+</style>
+</head>
+<body>
+
+<div id="auth-overlay" class="auth-overlay">
+  <div class="auth-box">
+    <h2>Prehľad financií</h2>
+    <div class="auth-sub">Prihlás sa, aby si videl(a) svoje dáta na všetkých zariadeniach.</div>
+    <input type="email" id="auth-email" placeholder="Email" autocomplete="email">
+    <input type="password" id="auth-password" placeholder="Heslo" autocomplete="current-password">
+    <div class="auth-actions">
+      <button class="btn" id="auth-login">Prihlásiť sa</button>
+      <button class="btn ghost" id="auth-register">Registrovať</button>
+    </div>
+    <div class="auth-error" id="auth-error"></div>
+    <div class="auth-status" id="auth-status"></div>
+  </div>
+</div>
+
+<div class="wrap" id="app-wrap" style="display:none;">
+  <header>
+    <div class="eyebrow">Osobná evidencia · zákazky a brigádnici</div>
+    <h1>Prehľad financií</h1>
+  </header>
+
+  <div class="user-bar">
+    <span><span class="sync-dot" id="sync-dot"></span><span id="sync-label">Uložené</span></span>
+    <span class="email" id="user-email"></span>
+    <button class="btn ghost small" id="logout-btn">Odhlásiť sa</button>
+  </div>
+
+  <div class="totals" id="totals"></div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="jobs">Zákazky</button>
+    <button class="tab" data-tab="recurring">Opakované</button>
+    <button class="tab" data-tab="monthly">Mesačne</button>
+    <button class="tab" data-tab="workers">Brigádnici</button>
+  </div>
+
+  <div id="view-jobs">
+    <div class="add-form">
+      <div class="field">
+        <label for="new-date">Dátum</label>
+        <input type="date" id="new-date">
+      </div>
+      <div class="field client">
+        <label for="new-client">Pre koho</label>
+        <input type="text" id="new-client" placeholder="Meno klienta / firmy">
+      </div>
+      <div class="field price">
+        <label for="new-price">Cena (€)</label>
+        <input type="number" id="new-price" placeholder="0" step="0.01">
+      </div>
+      <div class="field duration">
+        <label for="new-duration">Trvanie (nepovinné)</label>
+        <input type="text" id="new-duration" placeholder="napr. 2,5 h">
+      </div>
+      <div class="field note">
+        <label for="new-note">Poznámka</label>
+        <input type="text" id="new-note" placeholder="napr. adresa, čo sa robilo">
+      </div>
+      <button class="btn" id="add-job-btn">+ Pridať zákazku</button>
+    </div>
+    <div class="filter-bar" id="filter-bar"></div>
+    <div id="jobs-list"></div>
+  </div>
+
+  <div id="view-monthly" style="display:none;"></div>
+
+  <div id="view-recurring" style="display:none;"></div>
+
+  <div id="view-workers" style="display:none;"></div>
+
+  <footer>Údaje sa ukladajú automaticky do cloudu · viditeľné iba tebe</footer>
+</div>
+<div id="chart-tooltip" class="chart-tooltip"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script>
+// ====== FIREBASE KONFIGURÁCIA ======
+// Skopíruj sem svoje hodnoty z Firebase Console -> Project settings -> Your apps -> SDK setup and configuration
+
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB3saEv5kSgbb95oYbX45FhHNeVT5XYECI",
+  authDomain: "finance-rtb.firebaseapp.com",
+  projectId: "finance-rtb",
+  storageBucket: "finance-rtb.firebasestorage.app",
+  messagingSenderId: "409677374160",
+  appId: "1:409677374160:web:5f4b81a2212b31144e34d5"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+let currentUser = null;
+
+function skAuthError(err){
+  const map = {
+    'auth/invalid-email': 'Neplatný email.',
+    'auth/user-not-found': 'Účet s týmto emailom neexistuje. Skús sa registrovať.',
+    'auth/wrong-password': 'Nesprávne heslo.',
+    'auth/invalid-credential': 'Nesprávny email alebo heslo.',
+    'auth/email-already-in-use': 'Tento email už má vytvorený účet. Skús sa prihlásiť.',
+    'auth/weak-password': 'Heslo musí mať aspoň 6 znakov.',
+    'auth/missing-password': 'Zadaj heslo.',
+    'auth/network-request-failed': 'Chyba siete, skús to znova.'
+  };
+  return map[err.code] || ('Chyba: ' + err.message);
+}
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+document.getElementById('auth-login').addEventListener('click', async ()=>{
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  errEl.textContent = '';
+  try{
+    await auth.signInWithEmailAndPassword(email, password);
+  }catch(e){ errEl.textContent = skAuthError(e); }
+});
+document.getElementById('auth-register').addEventListener('click', async ()=>{
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-error');
+  errEl.textContent = '';
+  try{
+    await auth.createUserWithEmailAndPassword(email, password);
+  }catch(e){ errEl.textContent = skAuthError(e); }
+});
+document.getElementById('logout-btn').addEventListener('click', ()=> auth.signOut());
+
+auth.onAuthStateChanged(user=>{
+  currentUser = user;
+  const overlay = document.getElementById('auth-overlay');
+  const appWrap = document.getElementById('app-wrap');
+  if(user){
+    overlay.style.display = 'none';
+    appWrap.style.display = '';
+    document.getElementById('user-email').textContent = user.email;
+    load();
+  }else{
+    overlay.style.display = 'flex';
+    appWrap.style.display = 'none';
+  }
+});
+
+const PRESET_WORKERS = ['Emka','Denisa','Laura','Tomáš','Lucia','Sara','Juraj'];
+
+let state = { jobs: [], settings: { rate: 10 }, templates: [] };
+let expanded = {};
+let expandedTpl = {};
+let selectedJobs = new Set();
+let genStatus = {};
+let activeTab = 'jobs';
+let saveTimer = null;
+const WEEKDAYS_SK = [
+  { value: 1, label: 'Pondelok', short: 'Po' },
+  { value: 2, label: 'Utorok', short: 'Ut' },
+  { value: 3, label: 'Streda', short: 'St' },
+  { value: 4, label: 'Štvrtok', short: 'Št' },
+  { value: 5, label: 'Piatok', short: 'Pi' },
+  { value: 6, label: 'Sobota', short: 'So' },
+  { value: 0, label: 'Nedeľa', short: 'Ne' },
+];
+function weekdayLabel(v){ return (WEEKDAYS_SK.find(w=>w.value===v)||{}).label || ''; }
+function weekdayShort(v){ return (WEEKDAYS_SK.find(w=>w.value===v)||{}).short || ''; }
+window._tplDaysDraft = [];
+let filters = { month: new Date().toISOString().slice(0,7), showAllMonths: false, search: '', worker: '', onlyUnpaid: false, hideAllRecurring: false, showHidden: false, showArchived: false };
+
+function uid(){ return Math.random().toString(36).slice(2,10); }
+function fmt(n){ return (Math.round((n||0)*100)/100).toFixed(2) + ' €'; }
+function fmtDate(d){
+  if(!d) return '—';
+  const [y,m,day] = d.split('-');
+  return `${day}.${m}.${y}`;
+}
+function rate(){ return Number(state.settings.rate) || 10; }
+const MONTHS_SK = ['Január','Február','Marec','Apríl','Máj','Jún','Júl','August','September','Október','November','December'];
+function monthKey(d){ return d ? d.slice(0,7) : '—'; }
+function monthLabel(key){
+  if(key === '—') return 'Bez dátumu';
+  const [y,m] = key.split('-');
+  return `${MONTHS_SK[parseInt(m,10)-1]} ${y}`;
+}
+
+function setSyncStatus(mode){
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-label');
+  if(!dot || !label) return;
+  dot.classList.remove('saving','error');
+  if(mode === 'saving'){ dot.classList.add('saving'); label.textContent = 'Ukladá sa…'; }
+  else if(mode === 'error'){ dot.classList.add('error'); label.textContent = 'Chyba pri ukladaní'; }
+  else{ label.textContent = 'Uložené'; }
+}
+
+async function load(){
+  if(!currentUser) return;
+  try{
+    const docSnap = await db.collection('userData').doc(currentUser.uid).get();
+    if(docSnap.exists && docSnap.data() && docSnap.data().state){
+      const parsed = JSON.parse(docSnap.data().state);
+      state = Object.assign({ jobs: [], settings: { rate: 10 }, templates: [] }, parsed);
+      if(!state.templates) state.templates = [];
+      state.templates.forEach(t=>{
+        if(!t.weekdays){
+          t.weekdays = t.frequency === 'daily' ? [0,1,2,3,4,5,6] : [t.weekday];
+        }
+      });
+      state.jobs.forEach(j=>{
+        if(j.clientPaid === undefined) j.clientPaid = false;
+        if(j.note === undefined) j.note = '';
+        if(j.duration === undefined) j.duration = '';
+        j.payments.forEach(p=>{
+          if(p.mode === undefined) p.mode = 'hours';
+          if(p.value === undefined) p.value = p.mode === 'hours' ? (p.amount||0)/rate() : (p.amount||0);
+        });
+      });
+    } else {
+      state = { jobs: [], settings: { rate: 10 }, templates: [] };
+    }
+  }catch(e){
+    console.error('Načítanie zlyhalo', e);
+    setSyncStatus('error');
+  }
+  render();
+}
+
+function scheduleSave(){
+  setSyncStatus('saving');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(save, 600);
+}
+async function save(){
+  if(!currentUser) return;
+  try{
+    await db.collection('userData').doc(currentUser.uid).set({
+      state: JSON.stringify(state),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    setSyncStatus('ok');
+  }catch(e){
+    console.error('Uloženie zlyhalo', e);
+    setSyncStatus('error');
+  }
+}
+
+function paymentAmount(p){
+  if(p.mode === 'hours') return (Number(p.value)||0) * rate();
+  return Number(p.value)||0;
+}
+function jobPaymentTotal(job, onlyPaid){
+  return job.payments.reduce((s,p)=> s + (onlyPaid ? (p.paid ? paymentAmount(p) : 0) : paymentAmount(p)), 0);
+}
+function activeJobs(){ return state.jobs.filter(j=>!j.archived); }
+
+function renderTotals(){
+  const jobs = activeJobs();
+  const totalEarned = jobs.reduce((s,j)=> s + (Number(j.price)||0), 0);
+  const totalPaidOut = jobs.reduce((s,j)=> s + jobPaymentTotal(j, true), 0);
+  const totalOwedToWorkers = jobs.reduce((s,j)=> s + jobPaymentTotal(j, false) - jobPaymentTotal(j, true), 0);
+  const totalUnpaidByClients = jobs.reduce((s,j)=> s + (j.clientPaid ? 0 : (Number(j.price)||0)), 0);
+  const netEarned = totalEarned - totalPaidOut;
+  document.getElementById('totals').innerHTML = `
+    <div class="stat net">
+      <div class="label">Čistý zisk</div>
+      <div class="value">${fmt(netEarned)}</div>
+    </div>
+    <div class="stat">
+      <div class="label">Spolu zarobené</div>
+      <div class="value">${fmt(totalEarned)}</div>
+    </div>
+    <div class="stat amber">
+      <div class="label">Klienti dlžia</div>
+      <div class="value">${fmt(totalUnpaidByClients)}</div>
+    </div>
+    <div class="stat green">
+      <div class="label">Vyplatené brigádnikom</div>
+      <div class="value">${fmt(totalPaidOut)}</div>
+    </div>
+    <div class="stat blue">
+      <div class="label">Dlžím brigádnikom</div>
+      <div class="value">${fmt(totalOwedToWorkers)}</div>
+    </div>
+  `;
+}
+
+function renderJobCard(job){
+  const isOpen = !!expanded[job.id];
+  const allocated = jobPaymentTotal(job, false);
+  const paidOut = jobPaymentTotal(job, true);
+  const workersSettled = job.payments.length > 0 && paidOut >= allocated && allocated > 0;
+
+  let badges = '';
+  badges += job.clientPaid
+    ? `<span class="badge green">Klient zaplatil</span>`
+    : `<span class="badge red">Klient nezaplatil</span>`;
+  if(job.payments.length > 0){
+    badges += workersSettled
+      ? `<span class="badge green">Brigádnici doplatení</span>`
+      : `<span class="badge amber">Brigádnici otvorené</span>`;
+  }
+  const workerNames = job.payments.map(p=>p.name).filter(Boolean).join(', ');
+  const isRecurring = !!job.templateId;
+  if(isRecurring){
+    badges = `<span class="badge blue">Pravidelná</span>` + badges;
+  }
+  if(job.archived){
+    badges = `<span class="badge red">Archivovaná</span>`;
+  }
+  const hideBtn = isRecurring
+    ? `<button type="button" class="recur-hide" data-hide-job="${job.id}" title="${job.hidden ? 'Zobraziť túto zákazku v zozname' : 'Skryť túto zákazku zo zoznamu'}">${job.hidden ? 'odkryť' : 'skryť'}</button>`
+    : '';
+
+  return `
+    <div class="job ${isOpen ? 'expanded' : ''} ${job.hidden ? 'is-hidden' : ''} ${job.archived ? 'is-archived' : ''}" data-job="${job.id}">
+      <div class="job-row" data-toggle="${job.id}">
+        <label class="select-check">
+          <input type="checkbox" data-select-job="${job.id}" ${selectedJobs.has(job.id) ? 'checked':''}>
+        </label>
+        <span class="chevron">▶</span>
+        <span class="client-col">
+          <span class="client">${job.client || '(bez mena)'}</span>
+          <span class="note-preview">${[job.duration ? '⏱ '+job.duration : '', job.note, workerNames].filter(Boolean).join(' · ').replace(/"/g,'&quot;')}</span>
+        </span>
+        ${badges}
+        <span class="price">${fmt(job.price)}</span>
+        ${hideBtn}
+      </div>
+      <div class="job-body">
+        <div class="edit-row">
+          <div class="field date">
+            <label for="edit-date-${job.id}">Dátum</label>
+            <input type="date" id="edit-date-${job.id}" value="${job.date || ''}" data-edit-date="${job.id}">
+          </div>
+          <div class="field client">
+            <label for="edit-client-${job.id}">Klient</label>
+            <input type="text" id="edit-client-${job.id}" value="${(job.client||'').replace(/"/g,'&quot;')}" data-edit-client="${job.id}" placeholder="Meno klienta / firmy">
+          </div>
+          <div class="field price">
+            <label for="edit-price-${job.id}">Cena (€)</label>
+            <input type="number" id="edit-price-${job.id}" value="${job.price || 0}" step="0.01" data-edit-price="${job.id}">
+          </div>
+          <div class="field duration">
+            <label for="edit-duration-${job.id}">Trvanie (nepovinné)</label>
+            <input type="text" id="edit-duration-${job.id}" value="${(job.duration||'').replace(/"/g,'&quot;')}" placeholder="napr. 2,5 h" data-edit-duration="${job.id}">
+          </div>
+        </div>
+        <div class="client-paid-toggle">
+          <span>Zákazník už zaplatil</span>
+          <label class="switch">
+            <input type="checkbox" ${job.clientPaid ? 'checked':''} data-client-paid="${job.id}">
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+
+        <div class="note-field">
+          <label for="note-${job.id}">Poznámka k zákazke</label>
+          <textarea id="note-${job.id}" data-note="${job.id}" placeholder="napr. adresa, čo sa robilo, detaily">${job.note || ''}</textarea>
+        </div>
+
+        <div class="section-label">Brigádnici na tejto zákazke</div>
+        <div class="quick-add">
+          ${PRESET_WORKERS.map(n=>`<button class="chip" data-quick-add="${job.id}" data-name="${n}">+ ${n}</button>`).join('')}
+        </div>
+
+        ${job.payments.map(p => `
+          <div class="payment-row" data-payment="${p.id}" data-job2="${job.id}">
+            <input type="text" value="${(p.name||'').replace(/"/g,'&quot;')}" placeholder="Meno" data-field="name">
+            <div class="mode-toggle">
+              <button type="button" class="${p.mode==='hours'?'active':''}" data-mode="hours" data-payid="${p.id}" data-jobid="${job.id}">hod.</button>
+              <button type="button" class="${p.mode==='eur'?'active':''}" data-mode="eur" data-payid="${p.id}" data-jobid="${job.id}">€</button>
+            </div>
+            <input type="number" value="${p.value||0}" step="${p.mode==='hours'?'0.5':'0.01'}" placeholder="0" data-field="value">
+            <span class="payment-amount">${fmt(paymentAmount(p))}</span>
+            <label class="paid-check">
+              <input type="checkbox" ${p.paid ? 'checked':''} data-field="paid">
+              vyplatené
+            </label>
+            <button class="del" data-del-payment="${p.id}" data-job3="${job.id}" title="Odstrániť">✕</button>
+          </div>
+        `).join('')}
+        <div class="job-actions">
+          <button class="btn ghost small" data-add-payment="${job.id}">+ Vlastné meno</button>
+          <button class="btn ghost small" data-dup-job="${job.id}">⧉ Duplikovať (dnes)</button>
+          ${job.archived
+            ? `<button class="btn ghost small" data-restore-job="${job.id}">↺ Obnoviť</button>
+               <button class="del-job" data-del-job-permanent="${job.id}">Zmazať natrvalo</button>`
+            : `<button class="del-job" data-archive-job="${job.id}">🗄 Archivovať zákazku</button>`
+          }
+        </div>
+      </div>
+    </div>
+    `;
+}
+
+const DAYS_SK = ['Nedeľa','Pondelok','Utorok','Streda','Štvrtok','Piatok','Sobota'];
+function dayHeaderLabel(dateStr){
+  if(!dateStr) return 'Bez dátumu';
+  const d = new Date(dateStr+'T00:00:00');
+  return `${DAYS_SK[d.getDay()]} · ${fmtDate(dateStr)}`;
+}
+
+function getAllWorkerNames(){
+  const set = new Set(PRESET_WORKERS);
+  state.jobs.forEach(j=> j.payments.forEach(p=>{ if(p.name) set.add(p.name); }));
+  return [...set].sort();
+}
+
+function getFilteredJobs(){
+  return state.jobs.filter(job=>{
+    if(job.archived && !filters.showArchived) return false;
+    if(!filters.showAllMonths && monthKey(job.date) !== filters.month) return false;
+    if(filters.search){
+      const q = filters.search.toLowerCase();
+      const hay = (job.client + ' ' + (job.note||'')).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    if(filters.worker && !job.payments.some(p=>p.name===filters.worker)) return false;
+    if(filters.onlyUnpaid && job.clientPaid) return false;
+    if(job.templateId){
+      if(filters.hideAllRecurring && !filters.showHidden) return false;
+      if(job.hidden && !filters.showHidden) return false;
+    }
+    return true;
+  });
+}
+
+function renderMiniCalendar(){
+  if(filters.showAllMonths) return '';
+  const [y,m] = filters.month.split('-').map(Number);
+  if(!y || !m) return '';
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const firstWeekday = new Date(y, m-1, 1).getDay(); // 0=Ne..6=So
+  const offset = (firstWeekday + 6) % 7; // Po-first offset
+  const today = todayStr();
+
+  const dayMap = {};
+  state.jobs.forEach(j=>{
+    if(!j.date || monthKey(j.date) !== filters.month) return;
+    if(j.archived && !filters.showArchived) return;
+    if(!dayMap[j.date]) dayMap[j.date] = { count:0, sum:0, unpaid:false };
+    dayMap[j.date].count++;
+    dayMap[j.date].sum += Number(j.price)||0;
+    if(!j.clientPaid) dayMap[j.date].unpaid = true;
+  });
+  const maxCount = Math.max(1, ...Object.values(dayMap).map(v=>v.count));
+
+  const weekdayHeaders = WEEKDAYS_SK.map(w=>`<span>${w.short}</span>`).join('');
+
+  let cells = '';
+  for(let i=0;i<offset;i++){ cells += `<div class="mini-cal-day empty"></div>`; }
+  for(let d=1; d<=daysInMonth; d++){
+    const dateStr = `${filters.month}-${String(d).padStart(2,'0')}`;
+    const info = dayMap[dateStr];
+    let tierClass = '';
+    if(info){
+      const ratio = info.count / maxCount;
+      tierClass = ratio > 0.66 ? 'tier-3' : (ratio > 0.33 ? 'tier-2' : 'tier-1');
+    }
+    const classes = ['mini-cal-day'];
+    if(info) classes.push('has-jobs', tierClass);
+    if(dateStr === today) classes.push('is-today');
+    if(info && info.unpaid) classes.push('has-unpaid');
+    const title = info ? `${dayHeaderLabel(dateStr)} · ${info.count} ${info.count===1?'zákazka':(info.count>=2&&info.count<=4?'zákazky':'zákaziek')} · ${fmt(info.sum)}` : `${dayHeaderLabel(dateStr)} · voľný deň`;
+    cells += `<div class="${classes.join(' ')}" data-cal-date="${dateStr}" title="${title}">${d}</div>`;
+  }
+
+  return `
+    <div class="mini-cal">
+      <div class="mini-cal-weekdays">${weekdayHeaders}</div>
+      <div class="mini-cal-grid">${cells}</div>
+      <div class="mini-cal-legend">
+        <span><i class="swatch" style="background:var(--surface-2);border:1px solid var(--border)"></i>voľné</span>
+        <span><i class="swatch" style="background:var(--blue-dim)"></i>nabité</span>
+        <span><i class="swatch" style="background:var(--blue)"></i>plné</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderFilterBar(){
+  const bar = document.getElementById('filter-bar');
+  const names = getAllWorkerNames();
+
+  let summaryHtml = '';
+  if(!filters.showAllMonths){
+    const monthJobs = state.jobs.filter(j=> !j.archived && monthKey(j.date) === filters.month);
+    const monthEarned = monthJobs.reduce((s,j)=> s + (Number(j.price)||0), 0);
+    summaryHtml = `
+      <div class="month-summary">
+        <span class="ms-earned">${fmt(monthEarned)}</span>
+        <span>zarobené v ${monthLabel(filters.month)}</span>
+        <span class="dot">·</span>
+        <span>${monthJobs.length} ${monthJobs.length===1?'zákazka':(monthJobs.length>=2&&monthJobs.length<=4?'zákazky':'zákaziek')}</span>
+      </div>
+    `;
+  }
+
+  bar.innerHTML = `
+    <div class="month-nav">
+      <button class="btn ghost small" id="month-prev">◀</button>
+      <span class="month-nav-label">${filters.showAllMonths ? 'Všetky mesiace' : monthLabel(filters.month)}</span>
+      <button class="btn ghost small" id="month-next">▶</button>
+      <button class="btn ghost small" id="month-toggle-all">${filters.showAllMonths ? 'Len tento mesiac' : 'Zobraziť všetky'}</button>
+    </div>
+    ${renderMiniCalendar()}
+    <div class="filter-controls">
+      <input type="text" id="filter-search" placeholder="Hľadať klienta / poznámku…" value="${filters.search.replace(/"/g,'&quot;')}">
+      <select id="filter-worker">
+        <option value="">Všetci brigádnici</option>
+        ${names.map(n=>`<option value="${n}" ${filters.worker===n?'selected':''}>${n}</option>`).join('')}
+      </select>
+      <label class="unpaid-check">
+        <input type="checkbox" id="filter-unpaid" ${filters.onlyUnpaid ? 'checked':''}>
+        len nezaplatené
+      </label>
+      <button class="btn ghost small" id="toggle-hide-recurring">${filters.hideAllRecurring ? 'Zobraziť pravidelné' : 'Skryť pravidelné'}</button>
+      <label class="unpaid-check">
+        <input type="checkbox" id="filter-show-hidden" ${filters.showHidden ? 'checked':''}>
+        zobraziť skryté
+      </label>
+      <label class="unpaid-check">
+        <input type="checkbox" id="filter-show-archived" ${filters.showArchived ? 'checked':''}>
+        zobraziť archív
+      </label>
+    </div>
+    ${summaryHtml}
+  `;
+}
+
+function shiftMonth(delta){
+  const [y,m] = filters.month.split('-').map(Number);
+  const d = new Date(y, m-1+delta, 1);
+  filters.month = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+function renderJobsList(){
+  const list = document.getElementById('jobs-list');
+  // drop selections of jobs that no longer exist
+  const existingIds = new Set(state.jobs.map(j=>j.id));
+  [...selectedJobs].forEach(id=>{ if(!existingIds.has(id)) selectedJobs.delete(id); });
+
+  if(state.jobs.length === 0){
+    list.innerHTML = `<div class="empty">Zatiaľ žiadne zákazky. Pridaj prvú vyššie.</div>`;
+    return;
+  }
+  const filtered = getFilteredJobs();
+
+  const bulkBar = selectedJobs.size > 0 ? `
+    <div class="bulk-bar">
+      <span class="count">${selectedJobs.size} ${selectedJobs.size===1?'vybraná':(selectedJobs.size>=2&&selectedJobs.size<=4?'vybrané':'vybraných')}</span>
+      <button class="btn small" id="bulk-mark-paid">✓ Klient zaplatil</button>
+      <button class="btn ghost small" id="bulk-mark-unpaid">Klient nezaplatil</button>
+      <button class="btn ghost small" id="bulk-archive">🗄 Archivovať</button>
+      <button class="btn ghost small" id="bulk-clear-select">Zrušiť výber</button>
+    </div>
+  ` : '';
+
+  if(filtered.length === 0){
+    list.innerHTML = bulkBar + `<div class="empty">Žiadne zákazky nezodpovedajú filtru.</div>`;
+    return;
+  }
+  const sorted = [...filtered].sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  const groups = [];
+  let currentKey = null;
+  sorted.forEach(job=>{
+    if(job.date !== currentKey){
+      groups.push({ date: job.date, jobs: [] });
+      currentKey = job.date;
+    }
+    groups[groups.length-1].jobs.push(job);
+  });
+  list.innerHTML = bulkBar + groups.map(g=>{
+    const daySum = g.jobs.reduce((s,j)=> s + (Number(j.price)||0), 0);
+    return `
+      <div class="day-group" data-jobs-date="${g.date}">
+        <div class="day-head">
+          <span class="day-name">${dayHeaderLabel(g.date)}</span>
+          <span class="day-count">${g.jobs.length} ${g.jobs.length===1?'zákazka':'zákazky'}</span>
+          <span class="day-sum">${fmt(daySum)}</span>
+        </div>
+        ${g.jobs.map(renderJobCard).join('')}
+      </div>
+    `;
+  }).join('');
+}
+
+function renderJobs(){
+  renderFilterBar();
+  renderJobsList();
+}
+
+function renderWorkers(){
+  const totals = {};
+  activeJobs().forEach(job => {
+    job.payments.forEach(p => {
+      const name = (p.name || '(bez mena)').trim() || '(bez mena)';
+      if(!totals[name]) totals[name] = { paid: 0, owed: 0 };
+      const amt = paymentAmount(p);
+      if(p.paid) totals[name].paid += amt;
+      else totals[name].owed += amt;
+    });
+  });
+  const names = Object.keys(totals).sort();
+  const el = document.getElementById('view-workers');
+  const rateBlock = `
+    <div class="rate-row">
+      <span>Bežná sadzba</span>
+      <input type="number" id="rate-input" value="${rate()}" min="0" step="0.5">
+      <span>€/h</span>
+    </div>
+  `;
+  if(names.length === 0){
+    el.innerHTML = rateBlock + `<div class="empty">Zatiaľ žiadni brigádnici. Pridaj platby v zákazke.</div>`;
+    return;
+  }
+  el.innerHTML = rateBlock + names.map(name => `
+    <div class="worker-card">
+      <div class="name">${name}</div>
+      <div class="figures">
+        <div class="col"><span class="lbl">Dlžím</span><span class="owed-v">${fmt(totals[name].owed)}</span></div>
+        <div class="col"><span class="lbl">Vyplatené</span><span class="paid-v">${fmt(totals[name].paid)}</span></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderMonthlyChartSVG(byMonth){
+  const keys = Object.keys(byMonth).sort((a,b)=> a.localeCompare(b));
+  const recentKeys = keys.slice(-12);
+  if(recentKeys.length === 0) return '';
+  const data = recentKeys.map(k=>{
+    const m = byMonth[k];
+    const net = m.earned - m.paidOut;
+    return { key:k, label: monthLabel(k), earned: m.earned, net };
+  });
+  const maxVal = Math.max(1, ...data.map(d=> Math.max(d.earned, d.net, 0)));
+  const barGroupW = 56;
+  const chartW = data.length * barGroupW + 20;
+  const chartH = 180;
+  const baseline = chartH - 26;
+  const scale = (baseline - 12) / maxVal;
+
+  const bars = data.map((d,i)=>{
+    const gx = 10 + i*barGroupW;
+    const earnedH = d.earned * scale;
+    const netH = Math.max(0, d.net) * scale;
+    const earnedY = baseline - earnedH;
+    const netY = baseline - netH;
+    const shortLabel = d.label.split(' ')[0].slice(0,3);
+    return `
+      <g>
+        <rect x="${gx}" y="${earnedY.toFixed(1)}" width="18" height="${earnedH.toFixed(1)}" rx="3" fill="var(--blue)" opacity="0.85"/>
+        <rect x="${gx+22}" y="${netY.toFixed(1)}" width="18" height="${netH.toFixed(1)}" rx="3" fill="var(--green)" opacity="0.95"/>
+        <text x="${gx+20}" y="${chartH-8}" text-anchor="middle" font-family="'IBM Plex Mono', monospace" font-size="9" fill="var(--text-soft)">${shortLabel}</text>
+        <rect class="chart-hit" x="${gx-2}" y="0" width="18" height="${baseline}" fill="transparent" pointer-events="all" data-label="${d.label}" data-type="Zarobené" data-value="${fmt(d.earned)}"/>
+        <rect class="chart-hit" x="${gx+20}" y="0" width="18" height="${baseline}" fill="transparent" pointer-events="all" data-label="${d.label}" data-type="Čistý zisk" data-value="${fmt(d.net)}"/>
+      </g>
+    `;
+  }).join('');
+
+  return `
+    <div class="chart-card">
+      <div class="chart-legend">
+        <span><i style="background:var(--blue)"></i> Zarobené</span>
+        <span><i style="background:var(--green)"></i> Čistý zisk</span>
+      </div>
+      <svg viewBox="0 0 ${chartW} ${chartH}" width="100%" height="180" preserveAspectRatio="xMinYMid meet">
+        <line x1="0" y1="${baseline}" x2="${chartW}" y2="${baseline}" stroke="var(--border)" stroke-width="1"/>
+        ${bars}
+      </svg>
+    </div>
+  `;
+}
+
+function renderMonthly(){
+  const el = document.getElementById('view-monthly');
+  const jobs = activeJobs();
+  if(jobs.length === 0){
+    el.innerHTML = `<div class="empty">Zatiaľ žiadne zákazky na zhrnutie.</div>`;
+    return;
+  }
+  const byMonth = {};
+  jobs.forEach(job=>{
+    const key = monthKey(job.date);
+    if(!byMonth[key]) byMonth[key] = { jobs: [], earned:0, paidOut:0, owedWorkers:0, unpaidClients:0 };
+    const m = byMonth[key];
+    m.jobs.push(job);
+    m.earned += Number(job.price)||0;
+    const allocated = jobPaymentTotal(job, false);
+    const paid = jobPaymentTotal(job, true);
+    m.paidOut += paid;
+    m.owedWorkers += (allocated - paid);
+    if(!job.clientPaid) m.unpaidClients += Number(job.price)||0;
+  });
+  const chartHtml = renderMonthlyChartSVG(byMonth);
+  const keys = Object.keys(byMonth).sort((a,b)=> b.localeCompare(a));
+  el.innerHTML = chartHtml + keys.map(key=>{
+    const m = byMonth[key];
+    const net = m.earned - m.paidOut;
+    return `
+    <div class="month-card">
+      <div class="month-head">
+        <span class="m-name">${monthLabel(key)}</span>
+        <span class="m-count">${m.jobs.length} ${m.jobs.length===1?'zákazka':'zákazky'}</span>
+      </div>
+      <div class="month-stats">
+        <div class="m-stat">
+          <span class="lbl">Zarobené</span>
+          <span class="val">${fmt(m.earned)}</span>
+        </div>
+        <div class="m-stat net">
+          <span class="lbl">Čistý zisk</span>
+          <span class="val">${fmt(net)}</span>
+        </div>
+        <div class="m-stat amber">
+          <span class="lbl">Klienti dlžia</span>
+          <span class="val">${fmt(m.unpaidClients)}</span>
+        </div>
+        <div class="m-stat green">
+          <span class="lbl">Vyplatené</span>
+          <span class="val">${fmt(m.paidOut)}</span>
+        </div>
+        <div class="m-stat blue">
+          <span class="lbl">Dlžím brigádnikom</span>
+          <span class="val">${fmt(m.owedWorkers)}</span>
+        </div>
+      </div>
+    </div>
+    `;
+  }).join('');
+}
+
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function firstOfMonthStr(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`; }
+
+function generateForTemplate(tpl, fromStr, toStr){
+  const from = new Date(fromStr+'T00:00:00');
+  const to = new Date(toStr+'T00:00:00');
+  if(isNaN(from) || isNaN(to) || from > to) return 0;
+  let count = 0;
+  const existingDates = new Set(
+    state.jobs.filter(j=>j.templateId===tpl.id).map(j=>j.date)
+  );
+  for(let d = new Date(from); d <= to; d.setDate(d.getDate()+1)){
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const matches = tpl.weekdays.includes(d.getDay());
+    if(!matches) continue;
+    if(existingDates.has(dateStr)) continue;
+    state.jobs.push({
+      id: uid(), date: dateStr, client: tpl.client, price: tpl.price,
+      note: tpl.note, clientPaid: false, templateId: tpl.id,
+      payments: tpl.payments.map(p=>({ id: uid(), name: p.name, mode: p.mode, value: p.value, paid:false }))
+    });
+    existingDates.add(dateStr);
+    count++;
+  }
+  return count;
+}
+
+function renderRecurring(){
+  const el = document.getElementById('view-recurring');
+  let html = `
+    <div class="new-template-form">
+      <div class="row1">
+        <div class="field client">
+          <label for="tpl-client">Pre koho</label>
+          <input type="text" id="tpl-client" placeholder="Meno klienta / firmy">
+        </div>
+        <div class="field price">
+          <label for="tpl-price">Cena (€)</label>
+          <input type="number" id="tpl-price" placeholder="0" step="0.01">
+        </div>
+        <div class="field note">
+          <label for="tpl-note">Poznámka</label>
+          <input type="text" id="tpl-note" placeholder="napr. adresa, čas">
+        </div>
+      </div>
+      <div class="section-label">Ktoré dni v týždni</div>
+      <div class="day-select" id="tpl-day-select">
+        ${WEEKDAYS_SK.map(w=>`<button type="button" class="day-chip ${window._tplDaysDraft.includes(w.value)?'active':''}" data-tpl-day="${w.value}">${w.short}</button>`).join('')}
+      </div>
+      <div class="section-label">Brigádnici na tejto opakovanej zákazke</div>
+      <div class="quick-add" id="tpl-quick-add">
+        ${PRESET_WORKERS.map(n=>`<button class="chip" data-tpl-quick-add="${n}">+ ${n}</button>`).join('')}
+      </div>
+      <div id="tpl-payments-list"></div>
+      <div style="margin-top:12px;">
+        <button class="btn" id="add-tpl-btn">+ Vytvoriť opakovanú zákazku</button>
+      </div>
+    </div>
+  `;
+
+  const activeTpls = state.templates.filter(t=>!t.archived);
+  const archivedTpls = state.templates.filter(t=>t.archived);
+
+  if(activeTpls.length === 0){
+    html += `<div class="empty">Zatiaľ žiadne opakované zákazky.</div>`;
+  } else {
+    html += activeTpls.map(tpl=>{
+      const workerNames = tpl.payments.map(p=>p.name).filter(Boolean).join(', ') || '—';
+      const freqLabel = tpl.weekdays.length === 7
+        ? 'Denne'
+        : tpl.weekdays.slice().sort((a,b)=> (a===0?7:a)-(b===0?7:b)).map(weekdayShort).join(', ');
+      const status = genStatus[tpl.id];
+      return `
+      <div class="template-card">
+        <div class="template-head">
+          <span class="t-client">${tpl.client || '(bez mena)'}</span>
+          <span class="freq-badge">${freqLabel}</span>
+          <span class="t-price">${fmt(tpl.price)}</span>
+        </div>
+        ${tpl.note ? `<div class="t-note">${tpl.note}</div>` : ''}
+        <div class="t-workers">Brigádnici: ${workerNames}</div>
+        <div class="gen-row">
+          <div class="field">
+            <label>Od</label>
+            <input type="date" id="gen-from-${tpl.id}" value="${firstOfMonthStr()}">
+          </div>
+          <div class="field">
+            <label>Do</label>
+            <input type="date" id="gen-to-${tpl.id}" value="${todayStr()}">
+          </div>
+          <button class="btn small" data-generate="${tpl.id}">Vygenerovať zákazky</button>
+        </div>
+        ${status ? `<div class="gen-status">${status}</div>` : ''}
+        <div class="template-actions">
+          <button class="del-tpl" data-archive-tpl="${tpl.id}">🗄 Archivovať opakovanú zákazku</button>
+        </div>
+      </div>
+      `;
+    }).join('');
+  }
+
+  if(archivedTpls.length > 0){
+    html += `
+      <div class="section-label" style="margin-top:22px;">Archív opakovaných zákaziek (${archivedTpls.length})</div>
+      ${archivedTpls.map(tpl=>{
+        const linkedCount = state.jobs.filter(j=>j.templateId===tpl.id).length;
+        return `
+        <div class="template-card is-archived">
+          <div class="template-head">
+            <span class="t-client">${tpl.client || '(bez mena)'}</span>
+            <span class="t-price">${fmt(tpl.price)}</span>
+          </div>
+          <div class="t-workers">${linkedCount} súvisiacich zákaziek</div>
+          <div class="template-actions">
+            <button class="btn ghost small" data-restore-tpl="${tpl.id}">↺ Obnoviť</button>
+            <button class="del-tpl" data-del-tpl-permanent="${tpl.id}">Zmazať natrvalo</button>
+          </div>
+        </div>
+        `;
+      }).join('')}
+    `;
+  }
+
+  el.innerHTML = html;
+
+  // temp state for the new-template payments builder
+  if(!window._tplDraft){ window._tplDraft = []; }
+  renderTplDraftPayments();
+}
+
+function renderTplDraftPayments(){
+  const wrap = document.getElementById('tpl-payments-list');
+  if(!wrap) return;
+  wrap.innerHTML = window._tplDraft.map((p,i)=>`
+    <div class="tpl-payment-row" data-idx="${i}">
+      <input type="text" value="${(p.name||'').replace(/"/g,'&quot;')}" placeholder="Meno" data-tpl-field="name">
+      <div class="mode-toggle">
+        <button type="button" class="${p.mode==='hours'?'active':''}" data-tpl-mode="hours" data-idx2="${i}">hod.</button>
+        <button type="button" class="${p.mode==='eur'?'active':''}" data-tpl-mode="eur" data-idx2="${i}">€</button>
+      </div>
+      <input type="number" value="${p.value||0}" step="${p.mode==='hours'?'0.5':'0.01'}" data-tpl-field="value">
+      <button class="del" data-tpl-del="${i}" title="Odstrániť">✕</button>
+    </div>
+  `).join('');
+}
+
+function render(){
+  renderTotals();
+  if(activeTab === 'jobs'){ renderJobs(); }
+  else if(activeTab === 'monthly'){ renderMonthly(); }
+  else if(activeTab === 'recurring'){ renderRecurring(); }
+  else { renderWorkers(); }
+}
+
+document.querySelectorAll('.tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    activeTab = btn.dataset.tab;
+    document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b===btn));
+    document.getElementById('view-jobs').style.display = activeTab==='jobs' ? '' : 'none';
+    document.getElementById('view-monthly').style.display = activeTab==='monthly' ? '' : 'none';
+    document.getElementById('view-recurring').style.display = activeTab==='recurring' ? '' : 'none';
+    document.getElementById('view-workers').style.display = activeTab==='workers' ? '' : 'none';
+    render();
+  });
+});
+
+const chartTooltip = document.getElementById('chart-tooltip');
+document.getElementById('view-monthly').addEventListener('mousemove', (e)=>{
+  const hit = e.target.closest('.chart-hit');
+  if(hit){
+    chartTooltip.innerHTML = `<span class="tt-label">${hit.dataset.label} · ${hit.dataset.type}</span><strong>${hit.dataset.value}</strong>`;
+    chartTooltip.style.left = e.clientX + 'px';
+    chartTooltip.style.top = (e.clientY - 12) + 'px';
+    chartTooltip.classList.add('visible');
+  } else {
+    chartTooltip.classList.remove('visible');
+  }
+});
+document.getElementById('view-monthly').addEventListener('mouseleave', ()=>{
+  chartTooltip.classList.remove('visible');
+});
+
+document.getElementById('view-workers').addEventListener('change', (e)=>{
+  const rateInput = e.target.closest('#rate-input');
+  if(rateInput){
+    state.settings.rate = parseFloat(rateInput.value) || 10;
+    scheduleSave();
+    render();
+  }
+});
+
+document.getElementById('add-job-btn').addEventListener('click', ()=>{
+  const date = document.getElementById('new-date').value || new Date().toISOString().slice(0,10);
+  const client = document.getElementById('new-client').value.trim();
+  const price = parseFloat(document.getElementById('new-price').value) || 0;
+  const note = document.getElementById('new-note').value.trim();
+  const duration = document.getElementById('new-duration').value.trim();
+  if(!client && !price){ return; }
+  const jobId = uid();
+  state.jobs.push({ id: jobId, date, client, price, note, duration, clientPaid: false, payments: [] });
+  document.getElementById('new-client').value = '';
+  document.getElementById('new-price').value = '';
+  document.getElementById('new-note').value = '';
+  document.getElementById('new-duration').value = '';
+  expanded[jobId] = true;
+  scheduleSave();
+  render();
+});
+
+document.getElementById('jobs-list').addEventListener('click', (e)=>{
+  const toggle = e.target.closest('[data-toggle]');
+  if(toggle && !e.target.closest('input') && !e.target.closest('button') && !e.target.closest('label')){
+    const id = toggle.dataset.toggle;
+    expanded[id] = !expanded[id];
+    render();
+    return;
+  }
+
+  const quickAdd = e.target.closest('[data-quick-add]');
+  if(quickAdd){
+    const jobId = quickAdd.dataset.quickAdd;
+    const name = quickAdd.dataset.name;
+    const job = state.jobs.find(j=>j.id===jobId);
+    job.payments.push({ id: uid(), name, mode:'hours', value:0, paid:false });
+    expanded[jobId] = true;
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const addPay = e.target.closest('[data-add-payment]');
+  if(addPay){
+    const jobId = addPay.dataset.addPayment;
+    const job = state.jobs.find(j=>j.id===jobId);
+    job.payments.push({ id: uid(), name:'', mode:'hours', value:0, paid:false });
+    expanded[jobId] = true;
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const modeBtn = e.target.closest('[data-mode]');
+  if(modeBtn){
+    const jobId = modeBtn.dataset.jobid;
+    const payId = modeBtn.dataset.payid;
+    const job = state.jobs.find(j=>j.id===jobId);
+    const payment = job.payments.find(p=>p.id===payId);
+    payment.mode = modeBtn.dataset.mode;
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const delPay = e.target.closest('[data-del-payment]');
+  if(delPay){
+    const jobId = delPay.dataset.job3;
+    const payId = delPay.dataset.delPayment;
+    const job = state.jobs.find(j=>j.id===jobId);
+    job.payments = job.payments.filter(p=>p.id!==payId);
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const hideJob = e.target.closest('[data-hide-job]');
+  if(hideJob){
+    const jobId = hideJob.dataset.hideJob;
+    const job = state.jobs.find(j=>j.id===jobId);
+    job.hidden = !job.hidden;
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const dupJob = e.target.closest('[data-dup-job]');
+  if(dupJob){
+    const jobId = dupJob.dataset.dupJob;
+    const job = state.jobs.find(j=>j.id===jobId);
+    const newId = uid();
+    state.jobs.push({
+      id: newId, date: todayStr(), client: job.client, price: job.price,
+      note: job.note, duration: job.duration, clientPaid: false,
+      payments: job.payments.map(p=>({ id: uid(), name: p.name, mode: p.mode, value: p.value, paid:false }))
+    });
+    expanded[newId] = true;
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const archiveJob = e.target.closest('[data-archive-job]');
+  if(archiveJob){
+    const jobId = archiveJob.dataset.archiveJob;
+    const job = state.jobs.find(j=>j.id===jobId);
+    job.archived = true;
+    selectedJobs.delete(jobId);
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const restoreJob = e.target.closest('[data-restore-job]');
+  if(restoreJob){
+    const jobId = restoreJob.dataset.restoreJob;
+    const job = state.jobs.find(j=>j.id===jobId);
+    job.archived = false;
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const delJobPermanent = e.target.closest('[data-del-job-permanent]');
+  if(delJobPermanent){
+    const jobId = delJobPermanent.dataset.delJobPermanent;
+    if(!confirm('Natrvalo zmazať túto zákazku? Táto akcia sa nedá vrátiť späť.')) return;
+    state.jobs = state.jobs.filter(j=>j.id!==jobId);
+    delete expanded[jobId];
+    selectedJobs.delete(jobId);
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const bulkMarkPaid = e.target.closest('#bulk-mark-paid');
+  if(bulkMarkPaid){
+    state.jobs.forEach(j=>{ if(selectedJobs.has(j.id)) j.clientPaid = true; });
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const bulkMarkUnpaid = e.target.closest('#bulk-mark-unpaid');
+  if(bulkMarkUnpaid){
+    state.jobs.forEach(j=>{ if(selectedJobs.has(j.id)) j.clientPaid = false; });
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const bulkClear = e.target.closest('#bulk-clear-select');
+  if(bulkClear){
+    selectedJobs.clear();
+    render();
+    return;
+  }
+
+  const bulkArchive = e.target.closest('#bulk-archive');
+  if(bulkArchive){
+    if(!confirm(`Archivovať ${selectedJobs.size} vybraných zákaziek?`)) return;
+    state.jobs.forEach(j=>{ if(selectedJobs.has(j.id)) j.archived = true; });
+    selectedJobs.clear();
+    scheduleSave();
+    render();
+    return;
+  }
+});
+
+document.getElementById('jobs-list').addEventListener('change', (e)=>{
+  const selectBox = e.target.closest('[data-select-job]');
+  if(selectBox){
+    const jobId = selectBox.dataset.selectJob;
+    if(selectBox.checked) selectedJobs.add(jobId); else selectedJobs.delete(jobId);
+    renderJobsList();
+    return;
+  }
+
+  const dateField = e.target.closest('[data-edit-date]');
+  if(dateField){
+    const jobId = dateField.dataset.editDate;
+    const job = state.jobs.find(j=>j.id===jobId);
+    job.date = dateField.value;
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const clientField = e.target.closest('[data-edit-client]');
+  if(clientField){
+    const jobId = clientField.dataset.editClient;
+    const job = state.jobs.find(j=>j.id===jobId);
+    job.client = clientField.value;
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const priceField = e.target.closest('[data-edit-price]');
+  if(priceField){
+    const jobId = priceField.dataset.editPrice;
+    const job = state.jobs.find(j=>j.id===jobId);
+    job.price = parseFloat(priceField.value) || 0;
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const durationField = e.target.closest('[data-edit-duration]');
+  if(durationField){
+    const jobId = durationField.dataset.editDuration;
+    const job = state.jobs.find(j=>j.id===jobId);
+    job.duration = durationField.value;
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const noteField = e.target.closest('[data-note]');
+  if(noteField){
+    const jobId = noteField.dataset.note;
+    const job = state.jobs.find(j=>j.id===jobId);
+    job.note = noteField.value;
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const clientPaidToggle = e.target.closest('[data-client-paid]');
+  if(clientPaidToggle){
+    const jobId = clientPaidToggle.dataset.clientPaid;
+    const job = state.jobs.find(j=>j.id===jobId);
+    job.clientPaid = clientPaidToggle.checked;
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const row = e.target.closest('.payment-row');
+  if(!row) return;
+  const jobId = row.dataset.job2;
+  const payId = row.dataset.payment;
+  const job = state.jobs.find(j=>j.id===jobId);
+  const payment = job.payments.find(p=>p.id===payId);
+  const field = e.target.dataset.field;
+  if(field === 'name') payment.name = e.target.value;
+  if(field === 'value') payment.value = parseFloat(e.target.value) || 0;
+  if(field === 'paid') payment.paid = e.target.checked;
+  scheduleSave();
+  render();
+});
+
+document.getElementById('filter-bar').addEventListener('click', (e)=>{
+  if(e.target.closest('#month-prev')){ shiftMonth(-1); render(); return; }
+  if(e.target.closest('#month-next')){ shiftMonth(1); render(); return; }
+  if(e.target.closest('#month-toggle-all')){ filters.showAllMonths = !filters.showAllMonths; render(); return; }
+  if(e.target.closest('#toggle-hide-recurring')){ filters.hideAllRecurring = !filters.hideAllRecurring; render(); return; }
+  const calDay = e.target.closest('.mini-cal-day[data-cal-date]');
+  if(calDay){
+    const dateStr = calDay.dataset.calDate;
+    const target = document.querySelector(`[data-jobs-date="${dateStr}"]`);
+    if(target){
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target.classList.remove('flash-highlight');
+      // force reflow so the animation can restart if clicked again
+      void target.offsetWidth;
+      target.classList.add('flash-highlight');
+      setTimeout(()=> target.classList.remove('flash-highlight'), 1300);
+    }
+    return;
+  }
+});
+document.getElementById('filter-bar').addEventListener('input', (e)=>{
+  if(e.target.id === 'filter-search'){
+    filters.search = e.target.value;
+    renderJobsList();
+  }
+});
+document.getElementById('filter-bar').addEventListener('change', (e)=>{
+  if(e.target.id === 'filter-worker'){
+    filters.worker = e.target.value;
+    renderJobsList();
+  }
+  if(e.target.id === 'filter-unpaid'){
+    filters.onlyUnpaid = e.target.checked;
+    renderJobsList();
+  }
+  if(e.target.id === 'filter-show-hidden'){
+    filters.showHidden = e.target.checked;
+    render();
+  }
+  if(e.target.id === 'filter-show-archived'){
+    filters.showArchived = e.target.checked;
+    render();
+  }
+});
+
+document.getElementById('view-recurring').addEventListener('click', (e)=>{
+  const dayChip = e.target.closest('[data-tpl-day]');
+  if(dayChip){
+    const val = parseInt(dayChip.dataset.tplDay,10);
+    const idx = window._tplDaysDraft.indexOf(val);
+    if(idx === -1) window._tplDaysDraft.push(val); else window._tplDaysDraft.splice(idx,1);
+    dayChip.classList.toggle('active');
+    return;
+  }
+  const quickAdd = e.target.closest('[data-tpl-quick-add]');
+  if(quickAdd){
+    window._tplDraft.push({ name: quickAdd.dataset.tplQuickAdd, mode:'hours', value:0 });
+    renderTplDraftPayments();
+    return;
+  }
+  const modeBtn = e.target.closest('[data-tpl-mode]');
+  if(modeBtn){
+    const idx = parseInt(modeBtn.dataset.idx2,10);
+    window._tplDraft[idx].mode = modeBtn.dataset.tplMode;
+    renderTplDraftPayments();
+    return;
+  }
+  const delBtn = e.target.closest('[data-tpl-del]');
+  if(delBtn){
+    const idx = parseInt(delBtn.dataset.tplDel,10);
+    window._tplDraft.splice(idx,1);
+    renderTplDraftPayments();
+    return;
+  }
+  const addTplBtn = e.target.closest('#add-tpl-btn');
+  if(addTplBtn){
+    const client = document.getElementById('tpl-client').value.trim();
+    const price = parseFloat(document.getElementById('tpl-price').value) || 0;
+    const note = document.getElementById('tpl-note').value.trim();
+    if(!client && !price){ return; }
+    if(window._tplDaysDraft.length === 0){ alert('Vyber aspoň jeden deň v týždni.'); return; }
+    state.templates.push({
+      id: uid(), client, price, note, weekdays: [...window._tplDaysDraft],
+      payments: window._tplDraft.map(p=>({ ...p }))
+    });
+    window._tplDraft = [];
+    window._tplDaysDraft = [];
+    scheduleSave();
+    render();
+    return;
+  }
+  const genBtn = e.target.closest('[data-generate]');
+  if(genBtn){
+    const tplId = genBtn.dataset.generate;
+    const tpl = state.templates.find(t=>t.id===tplId);
+    const from = document.getElementById(`gen-from-${tplId}`).value;
+    const to = document.getElementById(`gen-to-${tplId}`).value;
+    const count = generateForTemplate(tpl, from, to);
+    genStatus[tplId] = count > 0
+      ? `Vygenerovaných ${count} nových zákaziek.`
+      : `Žiadne nové zákazky v danom období (možno už existujú).`;
+    scheduleSave();
+    render();
+    return;
+  }
+  const archiveTpl = e.target.closest('[data-archive-tpl]');
+  if(archiveTpl){
+    const tplId = archiveTpl.dataset.archiveTpl;
+    const linkedCount = state.jobs.filter(j=>j.templateId===tplId).length;
+    const msg = linkedCount > 0
+      ? `Archivovať aj ${linkedCount} ${linkedCount===1?'zákazku':(linkedCount>=2&&linkedCount<=4?'zákazky':'zákaziek')} vygenerovaných touto opakovanou zákazkou? (dá sa neskôr obnoviť)`
+      : `Archivovať túto opakovanú zákazku? (dá sa neskôr obnoviť)`;
+    if(!confirm(msg)) return;
+    const tpl = state.templates.find(t=>t.id===tplId);
+    tpl.archived = true;
+    state.jobs.forEach(j=>{ if(j.templateId===tplId) j.archived = true; });
+    delete genStatus[tplId];
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const restoreTpl = e.target.closest('[data-restore-tpl]');
+  if(restoreTpl){
+    const tplId = restoreTpl.dataset.restoreTpl;
+    const tpl = state.templates.find(t=>t.id===tplId);
+    tpl.archived = false;
+    state.jobs.forEach(j=>{ if(j.templateId===tplId) j.archived = false; });
+    scheduleSave();
+    render();
+    return;
+  }
+
+  const delTplPermanent = e.target.closest('[data-del-tpl-permanent]');
+  if(delTplPermanent){
+    const tplId = delTplPermanent.dataset.delTplPermanent;
+    const linkedCount = state.jobs.filter(j=>j.templateId===tplId).length;
+    const msg = linkedCount > 0
+      ? `Natrvalo zmazať túto opakovanú zákazku aj s ${linkedCount} súvisiacimi zákazkami? Táto akcia sa nedá vrátiť späť.`
+      : `Natrvalo zmazať túto opakovanú zákazku? Táto akcia sa nedá vrátiť späť.`;
+    if(!confirm(msg)) return;
+    state.templates = state.templates.filter(t=>t.id!==tplId);
+    state.jobs = state.jobs.filter(j=>j.templateId!==tplId);
+    delete genStatus[tplId];
+    scheduleSave();
+    render();
+    return;
+  }
+});
+
+document.getElementById('view-recurring').addEventListener('change', (e)=>{
+  const row = e.target.closest('.tpl-payment-row');
+  if(!row) return;
+  const idx = parseInt(row.dataset.idx,10);
+  const field = e.target.dataset.tplField;
+  if(field === 'name') window._tplDraft[idx].name = e.target.value;
+  if(field === 'value') window._tplDraft[idx].value = parseFloat(e.target.value) || 0;
+});
+</script>
+</body>
+</html>
