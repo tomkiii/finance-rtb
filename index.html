@@ -1169,15 +1169,150 @@ body.admin-readonly button:not(#admin-exit-btn):not(#logout-btn):not(.tab){
 }
 .finance-entry .fe-amt.income{ color: var(--green); }
 .finance-entry .fe-amt.expense{ color: var(--red); }
+.cat-dot{
+  display:inline-block;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  margin-right:7px;
+  flex-shrink:0;
+}
+.finance-entry.editing{
+  flex-direction: column;
+  align-items: stretch;
+  background: var(--surface-2);
+}
+.finance-entry.editing .add-form{
+  margin: 0;
+  width: 100%;
+  border: none;
+  padding: 0;
+  background: transparent;
+}
 .finance-cat-breakdown{
-  margin-top: 22px;
+  margin-bottom: 18px;
 }
 .finance-cat-row{
   display:flex;
+  align-items:center;
   justify-content: space-between;
-  padding: 8px 0;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   font-size: 13px;
+  cursor: pointer;
+  background: var(--surface);
+  border-radius: 8px;
+  margin-bottom: 4px;
+  gap: 10px;
+}
+.finance-cat-row .fcr-left{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-weight:600;
+}
+.finance-cat-row .fcr-chevron{
+  color: var(--text-soft);
+  font-size: 10px;
+  transition: transform 0.15s ease;
+  display:inline-block;
+}
+.finance-cat-row.expanded .fcr-chevron{
+  transform: rotate(90deg);
+}
+.finance-cat-detail{
+  padding: 2px 4px 10px 30px;
+  margin-top: -4px;
+  margin-bottom: 6px;
+}
+.finance-cat-detail-row{
+  display:flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border);
+  font-family:'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.finance-cat-detail-row .fcd-note{
+  color: var(--text);
+  font-family: inherit;
+}
+.finance-period-bar{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:16px;
+}
+.finance-period-bar select,
+.finance-period-bar input[type=date]{
+  font-family:'IBM Plex Mono', monospace;
+  font-size:12px;
+  padding:7px 10px;
+  border-radius:8px;
+  border:1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+.finance-compare{
+  display:flex;
+  gap:12px;
+  margin-bottom:18px;
+  flex-wrap:wrap;
+}
+.finance-compare .item{
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  flex: 1;
+  min-width: 170px;
+}
+.finance-compare .item .lbl{
+  font-family:'IBM Plex Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-soft);
+  display:block;
+  margin-bottom: 6px;
+}
+.finance-compare .cmp-row{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:8px;
+}
+.finance-compare .cmp-val{
+  font-size:16px;
+  font-weight:700;
+}
+.finance-compare .cmp-delta{
+  font-family:'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight:600;
+  white-space:nowrap;
+}
+.finance-compare .cmp-delta.up{ color: var(--green); }
+.finance-compare .cmp-delta.down{ color: var(--red); }
+.finance-compare .cmp-delta.flat{ color: var(--text-soft); }
+.finance-compare .cmp-prev{
+  font-family:'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--text-soft);
+  margin-top:4px;
+}
+.finance-entry{
+  justify-content: flex-start;
+  gap: 10px;
+}
+.finance-entry .select-check{
+  margin: 0;
+}
+.finance-entry .fe-left{
+  flex: 1;
+  min-width: 0;
 }
 </style>
 </head>
@@ -1363,14 +1498,30 @@ auth.onAuthStateChanged(async user=>{
 const PRESET_WORKERS = ['Emka','Denisa','Laura','Tomáš','Lucia','Sara','Juraj'];
 
 const DEFAULT_FINANCE_CATEGORIES = {
-  expense: ['Tankovanie', 'Čistiace prostriedky', 'Nájom', 'Strava', 'Náradie a materiál', 'Poistenie', 'Telefón/internet', 'Doprava', 'Ostatné'],
+  expense: ['Potraviny', 'Tankovanie', 'Pes (Finn)', 'Posedenie', 'Čistiace prostriedky', 'Nájom', 'Strava', 'Náradie a materiál', 'Poistenie', 'Telefón/internet', 'Doprava', 'Ostatné'],
   income: ['Mzda', 'Predaj', 'Prenájom', 'Dividendy', 'Ostatné']
 };
-let state = { jobs: [], settings: { rate: 10 }, templates: [], finance: { entries: [], customCategories: { income: [], expense: [] } } };
+
+const FINANCE_ACCOUNTS = [
+  { id: 'hotovost', label: 'Hotovosť' },
+  { id: 'vub', label: 'VUB účet' },
+  { id: 'tatra_osobny', label: 'Tatrabanka osobný' },
+  { id: 'tatra_zivnost', label: 'Tatrabanka živnosť' },
+  { id: 'tatra_sro', label: 'Tatrabanka S.R.O.' }
+];
+function accountLabel(id){
+  const a = FINANCE_ACCOUNTS.find(a=>a.id===id);
+  return a ? a.label : id;
+}
+let state = { jobs: [], settings: { rate: 10, autoTransferJobsToFinance: false }, templates: [], finance: { entries: [], recurringTemplates: [], customCategories: { income: [], expense: [] } } };
 let expanded = {};
 let expandedTpl = {};
 let selectedJobs = new Set();
 let genStatus = {};
+let finGenStatus = {};
+let financeRecurringOpen = false;
+let expandedFinanceCat = {};
+let editingFinanceId = null;
 let activeTab = 'jobs';
 let saveTimer = null;
 const WEEKDAYS_SK = [
@@ -1420,13 +1571,17 @@ async function load(){
     const docSnap = await db.collection('userData').doc(targetUid).get();
     if(docSnap.exists && docSnap.data() && docSnap.data().state){
       const parsed = JSON.parse(docSnap.data().state);
-      state = Object.assign({ jobs: [], settings: { rate: 10 }, templates: [], finance: { entries: [], customCategories: { income: [], expense: [] } } }, parsed);
-      if(!state.finance) state.finance = { entries: [], customCategories: { income: [], expense: [] } };
+      state = Object.assign({ jobs: [], settings: { rate: 10, autoTransferJobsToFinance: false }, templates: [], finance: { entries: [], recurringTemplates: [], customCategories: { income: [], expense: [] } } }, parsed);
+      if(!state.finance) state.finance = { entries: [], recurringTemplates: [], customCategories: { income: [], expense: [] } };
       if(!state.finance.entries) state.finance.entries = [];
+      if(!state.finance.recurringTemplates) state.finance.recurringTemplates = [];
       if(!state.finance.customCategories) state.finance.customCategories = { income: [], expense: [] };
       if(!state.finance.customCategories.income) state.finance.customCategories.income = [];
       if(!state.finance.customCategories.expense) state.finance.customCategories.expense = [];
-      state.finance.entries.forEach(e=>{ if(!e.account) e.account = 'osobny'; });
+      state.finance.entries.forEach(e=>{ if(!e.account) e.account = 'tatra_osobny'; if(e.account==='osobny') e.account='tatra_osobny'; if(e.account==='firemny') e.account='tatra_sro'; if(e.jobId === undefined) e.jobId = null; });
+      (state.finance.recurringTemplates||[]).forEach(t=>{ if(t.account==='osobny') t.account='tatra_osobny'; if(t.account==='firemny') t.account='tatra_sro'; });
+      state.jobs.forEach(j=>{ /* jobs themselves have no account field; their finance entries were migrated above */ });
+      if(state.settings.autoTransferJobsToFinance === undefined) state.settings.autoTransferJobsToFinance = false;
       if(!state.templates) state.templates = [];
       state.templates.forEach(t=>{
         if(!t.weekdays){
@@ -1437,13 +1592,14 @@ async function load(){
         if(j.clientPaid === undefined) j.clientPaid = false;
         if(j.note === undefined) j.note = '';
         if(j.duration === undefined) j.duration = '';
+        if(j.financeEntryId === undefined) j.financeEntryId = null;
         j.payments.forEach(p=>{
           if(p.mode === undefined) p.mode = 'hours';
           if(p.value === undefined) p.value = p.mode === 'hours' ? (p.amount||0)/rate() : (p.amount||0);
         });
       });
     } else {
-      state = { jobs: [], settings: { rate: 10 }, templates: [], finance: { entries: [], customCategories: { income: [], expense: [] } } };
+      state = { jobs: [], settings: { rate: 10, autoTransferJobsToFinance: false }, templates: [], finance: { entries: [], recurringTemplates: [], customCategories: { income: [], expense: [] } } };
     }
   }catch(e){
     console.error('Načítanie zlyhalo', e);
@@ -1926,7 +2082,9 @@ function renderWorkers(){
   `).join('');
 }
 
-let financeAccountFilter = 'osobny';
+let financeAccountFilter = 'hotovost';
+let selectedFinance = new Set();
+let financePeriod = { mode: 'all', from: '', to: '' };
 
 function financeCategories(type){
   return DEFAULT_FINANCE_CATEGORIES[type].concat(state.finance.customCategories[type] || []);
@@ -1936,9 +2094,296 @@ function fmtSigned(n, type){
   return (type==='income' ? '+' : '−') + fmt(Math.abs(n));
 }
 
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+const CAT_COLORS = ['#5B8DEF','#54C7A2','#F2B84B','#E36C6C','#9D7BD8','#4FB8D6','#D97BB0','#8FBF5B','#E08E45','#6C9BD1','#C9D45B','#DE87D0'];
+function categoryColor(cat){
+  let hash = 0;
+  const s = cat || '';
+  for(let i=0;i<s.length;i++){ hash = s.charCodeAt(i) + ((hash<<5)-hash); }
+  const idx = Math.abs(hash) % CAT_COLORS.length;
+  return CAT_COLORS[idx];
+}
+function catDot(cat){
+  return `<span class="cat-dot" style="background:${categoryColor(cat)}"></span>`;
+}
+
+function getPeriodRange(period){
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  if(period.mode === 'thisMonth'){
+    const from = `${y}-${pad2(m+1)}-01`;
+    const to = `${y}-${pad2(m+1)}-${pad2(new Date(y, m+1, 0).getDate())}`;
+    return { from, to };
+  }
+  if(period.mode === 'lastMonth'){
+    const d = new Date(y, m-1, 1);
+    const ly = d.getFullYear(), lm = d.getMonth();
+    const from = `${ly}-${pad2(lm+1)}-01`;
+    const to = `${ly}-${pad2(lm+1)}-${pad2(new Date(ly, lm+1, 0).getDate())}`;
+    return { from, to };
+  }
+  if(period.mode === 'thisYear'){
+    return { from: `${y}-01-01`, to: `${y}-12-31` };
+  }
+  if(period.mode === 'custom'){
+    return { from: period.from || '0000-01-01', to: period.to || '9999-12-31' };
+  }
+  return null; // 'all'
+}
+
+function monthKeyOf(dateStr){ return (dateStr || '').slice(0,7); }
+
+function currentAndPrevMonthKeys(){
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  const cur = `${y}-${pad2(m+1)}`;
+  const d = new Date(y, m-1, 1);
+  const prev = `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+  return { cur, prev };
+}
+
+function renderPeriodBar(){
+  const labels = {
+    all: 'Celá história',
+    thisMonth: 'Tento mesiac',
+    lastMonth: 'Minulý mesiac',
+    thisYear: 'Tento rok',
+    custom: 'Vlastný rozsah'
+  };
+  return `
+    <div class="finance-period-bar">
+      <select id="fin-period-mode">
+        ${Object.keys(labels).map(k=>`<option value="${k}" ${financePeriod.mode===k?'selected':''}>${labels[k]}</option>`).join('')}
+      </select>
+      ${financePeriod.mode === 'custom' ? `
+        <input type="date" id="fin-period-from" value="${financePeriod.from}">
+        <span style="color:var(--text-soft);font-size:12px;">–</span>
+        <input type="date" id="fin-period-to" value="${financePeriod.to}">
+      ` : ''}
+    </div>
+  `;
+}
+
+function renderCompareBlock(allAccountEntries){
+  const { cur, prev } = currentAndPrevMonthKeys();
+  const curEntries = allAccountEntries.filter(e => monthKeyOf(e.date) === cur);
+  const prevEntries = allAccountEntries.filter(e => monthKeyOf(e.date) === prev);
+  const sumType = (arr, type) => arr.filter(e=>e.type===type).reduce((s,e)=>s+Number(e.amount||0),0);
+  const curIncome = sumType(curEntries,'income'), curExpense = sumType(curEntries,'expense');
+  const prevIncome = sumType(prevEntries,'income'), prevExpense = sumType(prevEntries,'expense');
+  const curNet = curIncome - curExpense, prevNet = prevIncome - prevExpense;
+
+  const deltaHtml = (curVal, prevVal, goodWhenUp) => {
+    if(prevVal === 0){
+      if(curVal === 0) return `<span class="cmp-delta flat">bez zmeny</span>`;
+      return `<span class="cmp-delta ${goodWhenUp ? 'up' : 'down'}">nové</span>`;
+    }
+    const pct = ((curVal - prevVal) / Math.abs(prevVal)) * 100;
+    if(Math.abs(pct) < 0.5) return `<span class="cmp-delta flat">bez zmeny</span>`;
+    const isUp = pct > 0;
+    const cls = isUp === goodWhenUp ? 'up' : 'down';
+    const arrow = isUp ? '▲' : '▼';
+    return `<span class="cmp-delta ${cls}">${arrow} ${isUp?'+':''}${pct.toFixed(0)}%</span>`;
+  };
+
+  return `
+    <div class="finance-compare">
+      <div class="item">
+        <span class="lbl">Príjmy — tento mesiac</span>
+        <div class="cmp-row"><span class="cmp-val">${fmt(curIncome)}</span>${deltaHtml(curIncome, prevIncome, true)}</div>
+        <div class="cmp-prev">minulý mesiac: ${fmt(prevIncome)}</div>
+      </div>
+      <div class="item">
+        <span class="lbl">Výdavky — tento mesiac</span>
+        <div class="cmp-row"><span class="cmp-val">${fmt(curExpense)}</span>${deltaHtml(curExpense, prevExpense, false)}</div>
+        <div class="cmp-prev">minulý mesiac: ${fmt(prevExpense)}</div>
+      </div>
+      <div class="item">
+        <span class="lbl">Zostatok — tento mesiac</span>
+        <div class="cmp-row"><span class="cmp-val" style="color:${curNet>=0?'var(--green)':'var(--red)'}">${fmt(curNet)}</span>${deltaHtml(curNet, prevNet, true)}</div>
+        <div class="cmp-prev">minulý mesiac: ${fmt(prevNet)}</div>
+      </div>
+    </div>
+  `;
+}
+
+function generateForFinanceTemplate(tpl, fromStr, toStr){
+  const from = new Date(fromStr+'T00:00:00');
+  const to = new Date(toStr+'T00:00:00');
+  if(isNaN(from) || isNaN(to) || from > to) return 0;
+  let count = 0;
+  const existingMonths = new Set(
+    state.finance.entries.filter(e=>e.financeTemplateId===tpl.id).map(e=>monthKeyOf(e.date))
+  );
+  let cursor = new Date(from.getFullYear(), from.getMonth(), 1);
+  const endCursor = new Date(to.getFullYear(), to.getMonth(), 1);
+  while(cursor <= endCursor){
+    const y = cursor.getFullYear(), m = cursor.getMonth();
+    const mkey = `${y}-${pad2(m+1)}`;
+    const daysInMonth = new Date(y, m+1, 0).getDate();
+    const day = Math.min(Math.max(1, tpl.day||1), daysInMonth);
+    const dateStr = `${y}-${pad2(m+1)}-${pad2(day)}`;
+    if(!existingMonths.has(mkey)){
+      state.finance.entries.push({
+        id: 'f' + Date.now() + Math.random().toString(36).slice(2,7),
+        date: dateStr, type: tpl.type, category: tpl.category, amount: tpl.amount,
+        note: tpl.note, account: tpl.account, financeTemplateId: tpl.id, jobId: null
+      });
+      existingMonths.add(mkey);
+      count++;
+    }
+    cursor.setMonth(cursor.getMonth()+1);
+  }
+  return count;
+}
+
+function renderFinanceRecurring(){
+  const tpls = state.finance.recurringTemplates.filter(t=>t.account===financeAccountFilter);
+  const activeTpls = tpls.filter(t=>!t.archived);
+  const archivedTpls = tpls.filter(t=>t.archived);
+  const catOptions = (type) => financeCategories(type).map(c=>`<option value="${c}">${c}</option>`).join('');
+
+  const form = `
+    <div class="add-form">
+      <div class="field">
+        <label for="fintpl-type">Typ</label>
+        <select id="fintpl-type">
+          <option value="expense">Výdavok</option>
+          <option value="income">Príjem</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="fintpl-category">Kategória</label>
+        <select id="fintpl-category">${catOptions('expense')}</select>
+      </div>
+      <div class="field price">
+        <label for="fintpl-amount">Suma (€)</label>
+        <input type="number" id="fintpl-amount" placeholder="0" step="0.01">
+      </div>
+      <div class="field">
+        <label for="fintpl-day">Deň v mesiaci</label>
+        <input type="number" id="fintpl-day" min="1" max="28" value="1">
+      </div>
+      <div class="field note">
+        <label for="fintpl-note">Poznámka</label>
+        <input type="text" id="fintpl-note" placeholder="napr. nájom byt">
+      </div>
+      <button class="btn" id="fintpl-add-btn">+ Vytvoriť opakovanú platbu</button>
+    </div>
+  `;
+
+  const activeHtml = activeTpls.length === 0
+    ? `<div class="empty">Zatiaľ žiadne opakované platby na tomto účte.</div>`
+    : activeTpls.map(tpl=>{
+      const status = finGenStatus[tpl.id];
+      return `
+      <div class="template-card">
+        <div class="template-head">
+          <span class="t-client">${tpl.category}</span>
+          <span class="freq-badge">${tpl.type==='income' ? 'Príjem' : 'Výdavok'} · deň ${tpl.day}</span>
+          <span class="t-price" style="color:${tpl.type==='income'?'var(--green)':'var(--red)'}">${fmt(tpl.amount)}</span>
+        </div>
+        ${tpl.note ? `<div class="t-note">${tpl.note}</div>` : ''}
+        <div class="gen-row">
+          <div class="field">
+            <label>Od</label>
+            <input type="date" id="fingen-from-${tpl.id}" value="${firstOfMonthStr()}">
+          </div>
+          <div class="field">
+            <label>Do</label>
+            <input type="date" id="fingen-to-${tpl.id}" value="${todayStr()}">
+          </div>
+          <button class="btn small" data-fin-generate="${tpl.id}">Vygenerovať platby</button>
+        </div>
+        ${status ? `<div class="gen-status">${status}</div>` : ''}
+        <div class="template-actions">
+          <button class="del-tpl" data-fin-archive-tpl="${tpl.id}">🗄 Archivovať opakovanú platbu</button>
+        </div>
+      </div>
+      `;
+    }).join('');
+
+  const archivedHtml = archivedTpls.length === 0 ? '' : `
+    <div class="section-label" style="margin-top:22px;">Archív opakovaných platieb (${archivedTpls.length})</div>
+    ${archivedTpls.map(tpl=>`
+      <div class="template-card is-archived">
+        <div class="template-head">
+          <span class="t-client">${tpl.category}</span>
+          <span class="t-price">${fmt(tpl.amount)}</span>
+        </div>
+        <div class="template-actions">
+          <button class="btn ghost small" data-fin-restore-tpl="${tpl.id}">↺ Obnoviť</button>
+          <button class="del-tpl" data-fin-del-tpl-permanent="${tpl.id}">Zmazať natrvalo</button>
+        </div>
+      </div>
+    `).join('')}
+  `;
+
+  return `
+    <div class="recurring-panel">
+      ${form}
+      ${activeHtml}
+      ${archivedHtml}
+    </div>
+  `;
+}
+
+function syncJobToFinance(job){
+  if(!state.settings.autoTransferJobsToFinance) return;
+  if(job.clientPaid){
+    if(job.financeEntryId) return; // already transferred
+    const entry = {
+      id: 'f' + Date.now() + Math.random().toString(36).slice(2,7),
+      date: job.date, type: 'income', category: 'Predaj',
+      amount: Number(job.price)||0, note: job.client || '', account: 'tatra_sro', jobId: job.id
+    };
+    state.finance.entries.push(entry);
+    job.financeEntryId = entry.id;
+  } else {
+    if(!job.financeEntryId) return;
+    state.finance.entries = state.finance.entries.filter(e=>e.id !== job.financeEntryId);
+    job.financeEntryId = null;
+  }
+}
+
+function unlinkFinanceEntryFromJob(entryId){
+  const entry = state.finance.entries.find(e=>e.id===entryId);
+  if(entry && entry.jobId){
+    const job = state.jobs.find(j=>j.id===entry.jobId);
+    if(job && job.financeEntryId === entryId) job.financeEntryId = null;
+  }
+}
+
+function renderFinanceBulkBar(){
+  if(selectedFinance.size === 0) return '';
+  const otherAccounts = FINANCE_ACCOUNTS.filter(a=>a.id!==financeAccountFilter);
+  const count = selectedFinance.size;
+  const word = count===1 ? 'vybraný' : (count>=2 && count<=4 ? 'vybrané' : 'vybraných');
+  return `
+    <div class="bulk-bar">
+      <span class="count">${count} ${word}</span>
+      <select id="fin-bulk-move-target">${otherAccounts.map(a=>`<option value="${a.id}">${a.label}</option>`).join('')}</select>
+      <button class="btn small" id="fin-bulk-move">→ Presunúť</button>
+      <button class="btn ghost small" id="fin-bulk-delete">✕ Zmazať vybrané</button>
+      <button class="btn ghost small" id="fin-bulk-clear">Zrušiť výber</button>
+    </div>
+  `;
+}
+
 function renderFinance(){
   const el = document.getElementById('view-finance');
-  const entries = state.finance.entries.filter(e => e.account === financeAccountFilter);
+  const allAccountEntries = state.finance.entries.filter(e => e.account === financeAccountFilter);
+
+  // drop selections that no longer exist or belong to the other account
+  const existingIds = new Set(allAccountEntries.map(e=>e.id));
+  [...selectedFinance].forEach(id=>{ if(!existingIds.has(id)) selectedFinance.delete(id); });
+
+  const range = getPeriodRange(financePeriod);
+  const entries = range
+    ? allAccountEntries.filter(e => e.date >= range.from && e.date <= range.to)
+    : allAccountEntries;
+
   const income = entries.filter(e=>e.type==='income').reduce((s,e)=>s+Number(e.amount||0),0);
   const expense = entries.filter(e=>e.type==='expense').reduce((s,e)=>s+Number(e.amount||0),0);
   const net = income - expense;
@@ -1984,42 +2429,251 @@ function renderFinance(){
 
   const sorted = entries.slice().sort((a,b)=> b.date.localeCompare(a.date));
   const list = sorted.length === 0
-    ? `<div class="empty">Zatiaľ žiadne záznamy na tomto účte.</div>`
-    : sorted.map(e => `
+    ? `<div class="empty">Žiadne záznamy pre zvolené obdobie.</div>`
+    : sorted.map(e => {
+      if(e.id === editingFinanceId){
+        return `
+        <div class="finance-entry editing" data-fin-id="${e.id}">
+          <div class="add-form">
+            <div class="field">
+              <label>Dátum</label>
+              <input type="date" id="fin-edit-date-${e.id}" value="${e.date}">
+            </div>
+            <div class="field">
+              <label>Typ</label>
+              <select id="fin-edit-type-${e.id}">
+                <option value="expense" ${e.type==='expense'?'selected':''}>Výdavok</option>
+                <option value="income" ${e.type==='income'?'selected':''}>Príjem</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Kategória</label>
+              <select id="fin-edit-category-${e.id}">${financeCategories(e.type).map(c=>`<option value="${c}" ${c===e.category?'selected':''}>${c}</option>`).join('')}</select>
+            </div>
+            <div class="field price">
+              <label>Suma (€)</label>
+              <input type="number" id="fin-edit-amount-${e.id}" value="${e.amount}" step="0.01">
+            </div>
+            <div class="field note">
+              <label>Poznámka</label>
+              <input type="text" id="fin-edit-note-${e.id}" value="${(e.note||'').replace(/"/g,'&quot;')}">
+            </div>
+            <button class="btn small" data-fin-save="${e.id}">✓ Uložiť</button>
+            <button class="btn ghost small" data-fin-cancel-edit="${e.id}">Zrušiť</button>
+          </div>
+        </div>
+        `;
+      }
+      return `
       <div class="finance-entry" data-fin-id="${e.id}">
+        <label class="select-check">
+          <input type="checkbox" data-select-fin="${e.id}" ${selectedFinance.has(e.id) ? 'checked':''}>
+        </label>
         <div class="fe-left">
-          <span class="fe-cat">${e.category}${e.note ? ' · ' + e.note : ''}</span>
+          <span class="fe-cat">${catDot(e.category)}${e.category}${e.note ? ' · ' + e.note : ''}</span>
           <span class="fe-meta">${e.date}</span>
         </div>
         <div style="display:flex; align-items:center; gap:10px;">
           <span class="fe-amt ${e.type}">${fmtSigned(Number(e.amount||0), e.type)}</span>
+          <button class="del" data-fin-edit="${e.id}" title="Upraviť">✎</button>
           <button class="del" data-fin-del="${e.id}" title="Odstrániť">✕</button>
         </div>
       </div>
-    `).join('');
+      `;
+    }).join('');
 
   const byCat = {};
+  const entriesByCat = {};
   entries.filter(e=>e.type==='expense').forEach(e=>{
     byCat[e.category] = (byCat[e.category]||0) + Number(e.amount||0);
+    if(!entriesByCat[e.category]) entriesByCat[e.category] = [];
+    entriesByCat[e.category].push(e);
   });
   const catRows = Object.keys(byCat).sort((a,b)=>byCat[b]-byCat[a]);
   const breakdown = catRows.length === 0 ? '' : `
     <div class="finance-cat-breakdown">
-      <h3 style="margin-bottom:4px;">Výdavky podľa kategórie</h3>
-      ${catRows.map(c=>`<div class="finance-cat-row"><span>${c}</span><span>${fmt(byCat[c])}</span></div>`).join('')}
+      <h3 style="margin-bottom:8px;">Výdavky podľa kategórie</h3>
+      ${catRows.map(c=>{
+        const isOpen = !!expandedFinanceCat[c];
+        const catEntries = entriesByCat[c].slice().sort((a,b)=> b.date.localeCompare(a.date));
+        const detail = isOpen ? `
+          <div class="finance-cat-detail">
+            ${catEntries.map(e=>`
+              <div class="finance-cat-detail-row">
+                <span>${fmtDate(e.date)}${e.note ? ` · <span class="fcd-note">${e.note}</span>` : ''}</span>
+                <span>${fmt(Number(e.amount||0))}</span>
+              </div>
+            `).join('')}
+          </div>
+        ` : '';
+        return `
+          <div class="finance-cat-row ${isOpen?'expanded':''}" data-fin-cat-toggle="${c}">
+            <span class="fcr-left"><span class="fcr-chevron">▶</span>${catDot(c)}${c}</span>
+            <span>${fmt(byCat[c])}</span>
+          </div>
+          ${detail}
+        `;
+      }).join('')}
     </div>
   `;
 
-  el.innerHTML = `
-    <div class="finance-tabs">
-      <button data-fin-account="osobny" class="${financeAccountFilter==='osobny'?'active':''}">Osobný účet</button>
-      <button data-fin-account="firemny" class="${financeAccountFilter==='firemny'?'active':''}">Firemný účet</button>
+  const autoTransferToggle = financeAccountFilter === 'tatra_sro' ? `
+    <div class="client-paid-toggle" style="margin-bottom:16px;">
+      <span>Automaticky preniesť uhradené zákazky do ${accountLabel('tatra_sro')}</span>
+      <label class="switch">
+        <input type="checkbox" id="fin-auto-transfer" ${state.settings.autoTransferJobsToFinance ? 'checked':''}>
+        <span class="track"><span class="thumb"></span></span>
+      </label>
     </div>
+  ` : '';
+
+  const recurringToggleBtn = `<button class="btn ghost small" id="fin-recurring-toggle">🔁 ${financeRecurringOpen ? 'Skryť opakované platby' : 'Opakujúce sa platby'}</button>`;
+  const recurringPanel = financeRecurringOpen ? renderFinanceRecurring() : '';
+
+  el.innerHTML = `
+    <div class="finance-tabs" style="flex-wrap:wrap;">
+      ${FINANCE_ACCOUNTS.map(a=>`<button data-fin-account="${a.id}" class="${financeAccountFilter===a.id?'active':''}">${a.label}</button>`).join('')}
+    </div>
+    ${renderCompareBlock(allAccountEntries)}
+    ${autoTransferToggle}
     ${addForm}
+    <div style="margin-bottom:16px;">${recurringToggleBtn}</div>
+    ${recurringPanel}
+    ${renderPeriodBar()}
     ${summary}
-    ${list}
     ${breakdown}
+    ${renderFinanceBulkBar()}
+    ${list}
   `;
+
+  const autoTransferBox = document.getElementById('fin-auto-transfer');
+  if(autoTransferBox){
+    autoTransferBox.addEventListener('change', (e)=>{
+      state.settings.autoTransferJobsToFinance = e.target.checked;
+      scheduleSave();
+      renderFinance();
+    });
+  }
+
+  el.querySelectorAll('[data-fin-cat-toggle]').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const cat = row.dataset.finCatToggle;
+      expandedFinanceCat[cat] = !expandedFinanceCat[cat];
+      renderFinance();
+    });
+  });
+
+  el.querySelectorAll('[data-fin-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      editingFinanceId = btn.dataset.finEdit;
+      renderFinance();
+    });
+  });
+  el.querySelectorAll('[data-fin-cancel-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      editingFinanceId = null;
+      renderFinance();
+    });
+  });
+  if(editingFinanceId){
+    const editTypeSel = document.getElementById(`fin-edit-type-${editingFinanceId}`);
+    const editCatSel = document.getElementById(`fin-edit-category-${editingFinanceId}`);
+    if(editTypeSel && editCatSel){
+      editTypeSel.addEventListener('change', (e)=>{
+        editCatSel.innerHTML = financeCategories(e.target.value).map(c=>`<option value="${c}">${c}</option>`).join('');
+      });
+    }
+    const saveBtn = el.querySelector(`[data-fin-save="${editingFinanceId}"]`);
+    if(saveBtn){
+      saveBtn.addEventListener('click', ()=>{
+        const entry = state.finance.entries.find(x=>x.id===editingFinanceId);
+        const date = document.getElementById(`fin-edit-date-${editingFinanceId}`).value;
+        const type = document.getElementById(`fin-edit-type-${editingFinanceId}`).value;
+        const category = document.getElementById(`fin-edit-category-${editingFinanceId}`).value;
+        const amount = parseFloat(document.getElementById(`fin-edit-amount-${editingFinanceId}`).value);
+        const note = document.getElementById(`fin-edit-note-${editingFinanceId}`).value.trim();
+        if(!date || !amount || amount <= 0){
+          alert('Zadaj platný dátum a sumu.');
+          return;
+        }
+        entry.date = date;
+        entry.type = type;
+        entry.category = category;
+        entry.amount = amount;
+        entry.note = note;
+        editingFinanceId = null;
+        scheduleSave();
+        renderFinance();
+      });
+    }
+  }
+
+  document.getElementById('fin-recurring-toggle').addEventListener('click', ()=>{
+    financeRecurringOpen = !financeRecurringOpen;
+    renderFinance();
+  });
+
+  if(financeRecurringOpen){
+    const fintplType = document.getElementById('fintpl-type');
+    const fintplCategory = document.getElementById('fintpl-category');
+    fintplType.addEventListener('change', (e)=>{
+      fintplCategory.innerHTML = financeCategories(e.target.value).map(c=>`<option value="${c}">${c}</option>`).join('');
+    });
+    document.getElementById('fintpl-add-btn').addEventListener('click', ()=>{
+      const type = fintplType.value;
+      const category = fintplCategory.value;
+      const amount = parseFloat(document.getElementById('fintpl-amount').value);
+      const day = Math.min(28, Math.max(1, parseInt(document.getElementById('fintpl-day').value,10) || 1));
+      const note = document.getElementById('fintpl-note').value.trim();
+      if(!amount || amount <= 0){
+        alert('Zadaj platnú sumu.');
+        return;
+      }
+      state.finance.recurringTemplates.push({
+        id: 'ft' + Date.now() + Math.random().toString(36).slice(2,7),
+        account: financeAccountFilter, type, category, amount, day, note, archived: false
+      });
+      scheduleSave();
+      renderFinance();
+    });
+    el.querySelectorAll('[data-fin-generate]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const tplId = btn.dataset.finGenerate;
+        const tpl = state.finance.recurringTemplates.find(t=>t.id===tplId);
+        const from = document.getElementById(`fingen-from-${tplId}`).value;
+        const to = document.getElementById(`fingen-to-${tplId}`).value;
+        if(!from || !to){ alert('Zadaj rozsah dátumov.'); return; }
+        const count = generateForFinanceTemplate(tpl, from, to);
+        finGenStatus[tplId] = count > 0 ? `Vygenerovaných ${count} platieb.` : 'Za toto obdobie už nie je čo generovať.';
+        scheduleSave();
+        renderFinance();
+      });
+    });
+    el.querySelectorAll('[data-fin-archive-tpl]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const tpl = state.finance.recurringTemplates.find(t=>t.id===btn.dataset.finArchiveTpl);
+        tpl.archived = true;
+        scheduleSave();
+        renderFinance();
+      });
+    });
+    el.querySelectorAll('[data-fin-restore-tpl]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const tpl = state.finance.recurringTemplates.find(t=>t.id===btn.dataset.finRestoreTpl);
+        tpl.archived = false;
+        scheduleSave();
+        renderFinance();
+      });
+    });
+    el.querySelectorAll('[data-fin-del-tpl-permanent]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        if(!confirm('Natrvalo zmazať túto opakovanú platbu? Vygenerované záznamy zostanú zachované.')) return;
+        state.finance.recurringTemplates = state.finance.recurringTemplates.filter(t=>t.id!==btn.dataset.finDelTplPermanent);
+        scheduleSave();
+        renderFinance();
+      });
+    });
+  }
 
   document.getElementById('fin-type').addEventListener('change', (e)=>{
     document.getElementById('fin-category').innerHTML = catOptions(e.target.value);
@@ -2059,6 +2713,7 @@ function renderFinance(){
   });
   el.querySelectorAll('[data-fin-del]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
+      unlinkFinanceEntryFromJob(btn.dataset.finDel);
       state.finance.entries = state.finance.entries.filter(e=>e.id !== btn.dataset.finDel);
       scheduleSave();
       renderFinance();
@@ -2067,9 +2722,57 @@ function renderFinance(){
   el.querySelectorAll('[data-fin-account]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       financeAccountFilter = btn.dataset.finAccount;
+      selectedFinance.clear();
       renderFinance();
     });
   });
+
+  document.getElementById('fin-period-mode').addEventListener('change', (e)=>{
+    financePeriod.mode = e.target.value;
+    if(financePeriod.mode !== 'custom'){ financePeriod.from = ''; financePeriod.to = ''; }
+    renderFinance();
+  });
+  const periodFrom = document.getElementById('fin-period-from');
+  const periodTo = document.getElementById('fin-period-to');
+  if(periodFrom) periodFrom.addEventListener('change', (e)=>{ financePeriod.from = e.target.value; renderFinance(); });
+  if(periodTo) periodTo.addEventListener('change', (e)=>{ financePeriod.to = e.target.value; renderFinance(); });
+
+  el.querySelectorAll('[data-select-fin]').forEach(box=>{
+    box.addEventListener('change', ()=>{
+      const id = box.dataset.selectFin;
+      if(box.checked) selectedFinance.add(id); else selectedFinance.delete(id);
+      renderFinance();
+    });
+  });
+
+  const bulkMoveBtn = document.getElementById('fin-bulk-move');
+  if(bulkMoveBtn){
+    bulkMoveBtn.addEventListener('click', ()=>{
+      const target = document.getElementById('fin-bulk-move-target').value;
+      state.finance.entries.forEach(e=>{ if(selectedFinance.has(e.id)) e.account = target; });
+      selectedFinance.clear();
+      scheduleSave();
+      renderFinance();
+    });
+  }
+  const bulkDeleteBtn = document.getElementById('fin-bulk-delete');
+  if(bulkDeleteBtn){
+    bulkDeleteBtn.addEventListener('click', ()=>{
+      if(!confirm(`Zmazať ${selectedFinance.size} vybraných záznamov?`)) return;
+      selectedFinance.forEach(id=>unlinkFinanceEntryFromJob(id));
+      state.finance.entries = state.finance.entries.filter(e=>!selectedFinance.has(e.id));
+      selectedFinance.clear();
+      scheduleSave();
+      renderFinance();
+    });
+  }
+  const bulkClearBtn = document.getElementById('fin-bulk-clear');
+  if(bulkClearBtn){
+    bulkClearBtn.addEventListener('click', ()=>{
+      selectedFinance.clear();
+      renderFinance();
+    });
+  }
 }
 
 function renderMonthlyChartSVG(byMonth){
@@ -2495,6 +3198,10 @@ document.getElementById('jobs-list').addEventListener('click', (e)=>{
   if(delJobPermanent){
     const jobId = delJobPermanent.dataset.delJobPermanent;
     if(!confirm('Natrvalo zmazať túto zákazku? Táto akcia sa nedá vrátiť späť.')) return;
+    const jobToDelete = state.jobs.find(j=>j.id===jobId);
+    if(jobToDelete && jobToDelete.financeEntryId){
+      state.finance.entries = state.finance.entries.filter(e=>e.id !== jobToDelete.financeEntryId);
+    }
     state.jobs = state.jobs.filter(j=>j.id!==jobId);
     delete expanded[jobId];
     selectedJobs.delete(jobId);
@@ -2505,7 +3212,7 @@ document.getElementById('jobs-list').addEventListener('click', (e)=>{
 
   const bulkMarkPaid = e.target.closest('#bulk-mark-paid');
   if(bulkMarkPaid){
-    state.jobs.forEach(j=>{ if(selectedJobs.has(j.id)) j.clientPaid = true; });
+    state.jobs.forEach(j=>{ if(selectedJobs.has(j.id)){ j.clientPaid = true; syncJobToFinance(j); } });
     scheduleSave();
     render();
     return;
@@ -2513,7 +3220,7 @@ document.getElementById('jobs-list').addEventListener('click', (e)=>{
 
   const bulkMarkUnpaid = e.target.closest('#bulk-mark-unpaid');
   if(bulkMarkUnpaid){
-    state.jobs.forEach(j=>{ if(selectedJobs.has(j.id)) j.clientPaid = false; });
+    state.jobs.forEach(j=>{ if(selectedJobs.has(j.id)){ j.clientPaid = false; syncJobToFinance(j); } });
     scheduleSave();
     render();
     return;
@@ -2601,6 +3308,7 @@ document.getElementById('jobs-list').addEventListener('change', (e)=>{
     const jobId = clientPaidToggle.dataset.clientPaid;
     const job = state.jobs.find(j=>j.id===jobId);
     job.clientPaid = clientPaidToggle.checked;
+    syncJobToFinance(job);
     scheduleSave();
     render();
     return;
