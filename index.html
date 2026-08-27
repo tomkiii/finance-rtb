@@ -1515,16 +1515,32 @@ body.admin-readonly button:not(#admin-exit-btn):not(#logout-btn):not(.tab){
   .job-row .client{ font-size: 14px; }
 }
 
-/* --- Mini kalendár: menší a kompaktnejší na telefóne --- */
+/* --- Mini kalendár: pevná malá veľkosť na telefóne, nezávislá od šírky kontajnera --- */
 @media (max-width: 640px){
   .mini-cal{
     margin: 0 auto 10px;
-    max-width: 240px;
+    width: 100%;
+    max-width: 100%;
   }
-  .mini-cal-weekdays{ gap: 2px; margin-bottom: 2px; }
-  .mini-cal-weekdays span{ font-size: 7.5px; }
-  .mini-cal-grid{ gap: 2px; }
-  .mini-cal-day{ font-size: 9px; border-radius: 4px; }
+  .mini-cal-weekdays{
+    grid-template-columns: repeat(7, minmax(0, 30px));
+    justify-content: center;
+    gap: 3px;
+    margin-bottom: 2px;
+  }
+  .mini-cal-weekdays span{ font-size: 7px; }
+  .mini-cal-grid{
+    grid-template-columns: repeat(7, minmax(0, 30px));
+    justify-content: center;
+    gap: 3px;
+  }
+  .mini-cal-day{
+    width: 30px;
+    height: 30px;
+    aspect-ratio: unset;
+    font-size: 9px;
+    border-radius: 4px;
+  }
   .mini-cal-legend{ flex-wrap: wrap; row-gap: 4px; gap: 8px; font-size: 8.5px; justify-content: center; }
 }
 
