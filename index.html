@@ -80,6 +80,14 @@
     font-size: 12.5px;
   }
 
+  .totals-caption{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-soft);
+    margin: 22px 0 -6px;
+  }
   /* Stat cards */
   .totals{
     display:grid;
@@ -569,6 +577,43 @@
     padding: 16px 16px 6px;
     margin-bottom: 18px;
   }
+  .year-card{
+    background: var(--surface-2);
+    border: 1px solid var(--blue);
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin: 4px 0 14px;
+  }
+  .year-card-head{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--blue);
+    margin-bottom: 10px;
+  }
+  .year-card-stats{
+    display:flex;
+    gap: 28px;
+    flex-wrap: wrap;
+  }
+  .yc-stat{
+    display:flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .yc-stat .lbl{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-soft);
+  }
+  .yc-stat .val{
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+  }
+  .yc-stat.net .val{ color: var(--green); }
   .chart-legend{
     display:flex;
     gap: 16px;
@@ -764,15 +809,44 @@
     background: var(--surface);
     color: var(--text);
   }
-  .unpaid-check{
+  .quick-filters{
+    display:flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .filter-chip{
     display:flex;
     align-items:center;
-    gap: 6px;
+    gap: 7px;
     font-family:'IBM Plex Mono', monospace;
     font-size: 11.5px;
+    letter-spacing: 0.02em;
+    padding: 8px 13px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
     color: var(--text-soft);
+    cursor: pointer;
     white-space: nowrap;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
   }
+  .filter-chip:hover{ border-color: var(--blue); color: var(--text); }
+  .filter-chip:focus-visible{ outline: 2px solid var(--blue); outline-offset: 2px; }
+  .filter-chip .fc-dot{
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+  }
+  .filter-chip.active{
+    background: var(--blue-dim);
+    border-color: var(--blue);
+    color: var(--blue);
+    font-weight: 600;
+  }
+  .filter-chip.active .fc-dot{ background: var(--blue); }
   .filter-controls input[type=text]:focus,
   .filter-controls select:focus{ outline: 2px solid var(--blue); outline-offset: 1px; }
 
@@ -1314,6 +1388,295 @@ body.admin-readonly button:not(#admin-exit-btn):not(#logout-btn):not(.tab){
   flex: 1;
   min-width: 0;
 }
+
+/* ================================================================
+   MOBILNÁ OPTIMALIZÁCIA — táto appka sa najviac používa na telefóne,
+   takže tento blok je zámerne najdôležitejší v celom stylesheete.
+   Ide o dopĺňajúce pravidlá (načítajú sa posledné), takže prepisujú
+   pôvodné desktopové hodnoty len na malých obrazovkách.
+   ================================================================ */
+@media (max-width: 640px){
+
+  /* --- Základ --- */
+  .wrap{ padding: 18px 12px 70px; }
+  h1{ font-size: 23px; }
+  .eyebrow{ font-size: 10px; letter-spacing: 0.1em; }
+
+  /* Zabráni automatickému priblíženiu na iPhone pri kliknutí do poľa
+     (Safari zooomuje, ak je font-size inputu menší ako 16px) */
+  input, select, textarea{ font-size: 16px !important; }
+
+  /* --- Sadzba --- */
+  .rate-row{ flex-wrap: wrap; row-gap: 6px; }
+
+  /* --- Súhrnné karty (Totals) --- */
+  .totals{ grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 16px 0 20px; }
+  .stat{ padding: 12px 12px; }
+  .stat .value{ font-size: 18px; margin-top: 4px; }
+
+  /* --- Horné taby: horizontálne scrollovanie namiesto zalamovania --- */
+  .tabs{
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-left: -12px; margin-right: -12px;
+    padding: 0 12px 4px;
+  }
+  .tabs::-webkit-scrollbar{ display: none; }
+  .tab{ white-space: nowrap; flex-shrink: 0; margin-right: 18px; font-size: 11.5px; }
+
+  .finance-tabs{
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .finance-tabs button{ white-space: nowrap; flex-shrink: 0; }
+
+  /* --- Formulár na pridanie zákazky: jedno pole na riadok --- */
+  .add-form{ flex-direction: column; align-items: stretch; gap: 10px; padding: 14px; }
+  .add-form .field{ width: 100%; }
+  .add-form .field input,
+  .field.client input, .field.price input, .field.duration input, .field.note input{
+    width: 100%; min-width: 0;
+  }
+  .add-form .btn{ width: 100%; margin-top: 2px; }
+
+  /* --- Riadok zákazky: rozbaľovanie do viacerých riadkov namiesto orezania --- */
+  .job-row{ flex-wrap: wrap; row-gap: 8px; padding: 12px 10px; column-gap: 8px; }
+  .job-row .client-col{ order: 1; flex: 1 1 120px; min-width: 0; }
+  .job-row .price{ order: 2; margin-left: auto; }
+  .job-row .badge{ order: 3; flex: 1 1 100%; }
+  .job-row .recur-hide{ order: 4; }
+  .job-row .client{ font-size: 15px; }
+
+  /* --- Editačný riadok zákazky: každé pole na plnú šírku --- */
+  .edit-row{ flex-direction: column; gap: 10px; }
+  .edit-row .field{ flex: 1 1 100% !important; width: 100%; }
+
+  /* --- Platby brigádnikom: meno na celú šírku, zvyšok pod tým --- */
+  .payment-row{ row-gap: 8px; }
+  .payment-row input[type=text]{ flex: 1 1 100%; }
+  .payment-row input[type=number]{ width: 68px; }
+  .payment-row .payment-amount{ margin-left: auto; }
+
+  /* --- Mesačný prehľad --- */
+  .month-stats{ grid-template-columns: repeat(2, 1fr); }
+  .year-card{ padding: 14px 14px; }
+  .year-card-head{ font-size: 16px; }
+  .year-card-stats{ gap: 18px; }
+  .yc-stat .val{ font-size: 17px; }
+
+  /* --- Karta brigádnika --- */
+  .worker-card{ flex-wrap: wrap; row-gap: 10px; }
+  .worker-card .figures{ width: 100%; justify-content: space-between; }
+
+  /* --- Filtre --- */
+  .filter-controls{ flex-direction: column; align-items: stretch; }
+  .filter-controls input[type=text], .filter-controls select{ width: 100%; min-width: 0; }
+  .quick-filters{ gap: 7px; }
+  .filter-chip{ font-size: 11px; padding: 8px 12px; }
+  .month-nav-label{ font-size: 14px; }
+
+  /* --- Hromadné akcie --- */
+  .bulk-bar{ flex-wrap: wrap; row-gap: 8px; }
+  .bulk-bar .count{ flex: 1 1 100%; }
+
+  /* --- Financie --- */
+  .finance-summary{ flex-direction: column; }
+  .finance-summary .card{ min-width: 0; }
+  .finance-compare{ flex-direction: column; }
+  .finance-compare .item{ min-width: 0; }
+  .finance-entry{ flex-wrap: wrap; row-gap: 8px; }
+  .finance-period-bar{ flex-direction: column; align-items: stretch; }
+  .finance-period-bar select, .finance-period-bar input[type=date]{ width: 100%; }
+
+  /* --- Nová opakovaná zákazka --- */
+  .new-template-form .row1{ flex-direction: column; align-items: stretch; }
+  .new-template-form .row1 .field{ width: 100%; }
+  .new-template-form .row1 .field input, .new-template-form .row1 .field select{ width: 100%; }
+  .gen-row{ flex-direction: column; align-items: stretch; }
+  .gen-row .field input{ width: 100%; min-width: 0; }
+  .gen-row .btn{ width: 100%; }
+
+  .day-select{ flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* --- Prihlásenie --- */
+  .auth-box{ padding: 22px 18px; width: calc(100% - 4px); }
+
+  /* --- Horný panel používateľa --- */
+  .user-bar{ flex-wrap: wrap; row-gap: 8px; }
+  #admin-banner{ flex-direction: column; align-items: flex-start !important; }
+}
+
+@media (max-width: 380px){
+  h1{ font-size: 20px; }
+  .stat .value{ font-size: 16px; }
+  .job-row .client{ font-size: 14px; }
+}
+
+/* --- Mini kalendár: kompaktnejšie na telefóne, celý týždeň vždy viditeľný --- */
+@media (max-width: 640px){
+  .mini-cal{ margin-bottom: 10px; }
+  .mini-cal-weekdays{ gap: 3px; margin-bottom: 3px; }
+  .mini-cal-weekdays span{ font-size: 8.5px; }
+  .mini-cal-grid{ gap: 3px; }
+  .mini-cal-day{ font-size: 10px; border-radius: 5px; }
+  .mini-cal-legend{ flex-wrap: wrap; row-gap: 4px; gap: 8px; font-size: 9px; }
+}
+
+/* ===== Swipe karty zákaziek ===== */
+.job-swipe-wrapper{
+  position: relative;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.job-swipe-wrapper .job{ margin-bottom: 0; position: relative; z-index: 2; background: var(--surface); }
+.job-swipe-wrapper .job-row{ transition: transform 0.22s ease; touch-action: pan-y; }
+.job-swipe-wrapper.dragging .job-row{ transition: none; }
+.job-swipe-bg{
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-right: 20px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #0E1420;
+  opacity: 0;
+  pointer-events: none;
+}
+.job-swipe-bg.is-archive{ background: var(--amber); }
+.job-swipe-bg.is-delete{ background: var(--red); }
+
+/* ===== Undo toast (namiesto confirm()) ===== */
+.undo-toast{
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translate(-50%, 16px);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #0F1116;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 12px 14px 12px 18px;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13.5px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 800;
+  max-width: calc(100% - 32px);
+}
+.undo-toast.visible{ opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+.undo-toast .undo-btn{
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--blue);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 2px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+@media (max-width: 640px){
+  .undo-toast{ bottom: 90px; left: 12px; right: 12px; transform: translateY(16px); width: auto; max-width: none; }
+  .undo-toast.visible{ transform: translateY(0); }
+}
+
+/* ===== Plávajúce tlačidlo "+" ===== */
+.fab-add{
+  position: fixed;
+  right: 18px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: var(--blue);
+  color: #0E1420;
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.4);
+  z-index: 500;
+}
+.fab-add:active{ transform: scale(0.94); }
+body.admin-readonly .fab-add{ display: none; }
+
+/* ===== Rýchle pridanie zákazky (bottom sheet) ===== */
+.quick-add-overlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 600;
+}
+.quick-add-overlay.visible{ opacity: 1; pointer-events: auto; }
+.quick-add-sheet{
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 16px 16px 0 0;
+  padding: 10px 18px calc(22px + env(safe-area-inset-bottom));
+  transform: translateY(105%);
+  transition: transform 0.25s ease;
+  z-index: 601;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.quick-add-sheet.visible{ transform: translateY(0); }
+.quick-add-handle{
+  width: 36px;
+  height: 4px;
+  border-radius: 3px;
+  background: var(--border);
+  margin: 6px auto 12px;
+}
+.quick-add-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+}
+.quick-add-close{
+  background: none;
+  border: none;
+  color: var(--text-soft);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+.quick-add-body{ display: flex; flex-direction: column; gap: 12px; }
+.quick-add-row{ display: flex; gap: 12px; }
+.quick-add-row .field{ flex: 1; }
+.quick-add-body .field input{ width: 100%; min-width: 0; }
 </style>
 </head>
 <body>
@@ -1357,6 +1720,7 @@ body.admin-readonly button:not(#admin-exit-btn):not(#logout-btn):not(.tab){
     <button class="btn ghost small" id="admin-close-btn" style="margin-top:10px;">Zavrieť admin panel</button>
   </div>
 
+  <div class="totals-caption" id="totals-caption"></div>
   <div class="totals" id="totals"></div>
 
   <div class="tabs">
@@ -1406,6 +1770,43 @@ body.admin-readonly button:not(#admin-exit-btn):not(#logout-btn):not(.tab){
   <footer>Údaje sa ukladajú automaticky do cloudu · viditeľné iba tebe</footer>
 </div>
 <div id="chart-tooltip" class="chart-tooltip"></div>
+
+<button type="button" id="fab-add-job" class="fab-add" aria-label="Rýchlo pridať zákazku" title="Rýchlo pridať zákazku">+</button>
+
+<div id="quick-add-overlay" class="quick-add-overlay"></div>
+<div id="quick-add-sheet" class="quick-add-sheet" role="dialog" aria-modal="true" aria-labelledby="quick-add-title">
+  <div class="quick-add-handle"></div>
+  <div class="quick-add-header">
+    <span id="quick-add-title">Nová zákazka</span>
+    <button type="button" id="quick-add-close" class="quick-add-close" aria-label="Zavrieť">✕</button>
+  </div>
+  <div class="quick-add-body">
+    <div class="field">
+      <label for="qa-client">Pre koho</label>
+      <input type="text" id="qa-client" placeholder="Meno klienta / firmy">
+    </div>
+    <div class="quick-add-row">
+      <div class="field price">
+        <label for="qa-price">Cena (€)</label>
+        <input type="number" id="qa-price" placeholder="0" step="0.01" inputmode="decimal">
+      </div>
+      <div class="field date">
+        <label for="qa-date">Dátum</label>
+        <input type="date" id="qa-date">
+      </div>
+    </div>
+    <div class="field">
+      <label for="qa-note">Poznámka (nepovinné)</label>
+      <input type="text" id="qa-note" placeholder="napr. adresa, čo sa robilo">
+    </div>
+    <button type="button" class="btn" id="qa-submit" style="width:100%;">+ Pridať zákazku</button>
+  </div>
+</div>
+
+<div class="undo-toast" id="undo-toast">
+  <span id="undo-toast-msg">Zmazané</span>
+  <button type="button" class="undo-btn" id="undo-toast-btn">Vrátiť späť</button>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -1517,6 +1918,7 @@ let state = { jobs: [], settings: { rate: 10, autoTransferJobsToFinance: false }
 let expanded = {};
 let expandedTpl = {};
 let selectedJobs = new Set();
+let pendingDeleteIds = new Set();
 let genStatus = {};
 let finGenStatus = {};
 let financeRecurringOpen = false;
@@ -1711,12 +2113,21 @@ function jobPaymentTotal(job, onlyPaid){
 function activeJobs(){ return state.jobs.filter(j=>!j.archived); }
 
 function renderTotals(){
-  const jobs = activeJobs();
+  const allJobs = activeJobs();
+  const jobs = filters.showAllMonths
+    ? allJobs
+    : allJobs.filter(j => monthKey(j.date) === filters.month);
   const totalEarned = jobs.reduce((s,j)=> s + (Number(j.price)||0), 0);
   const totalPaidOut = jobs.reduce((s,j)=> s + jobPaymentTotal(j, true), 0);
   const totalOwedToWorkers = jobs.reduce((s,j)=> s + jobPaymentTotal(j, false) - jobPaymentTotal(j, true), 0);
   const totalUnpaidByClients = jobs.reduce((s,j)=> s + (j.clientPaid ? 0 : (Number(j.price)||0)), 0);
   const netEarned = totalEarned - totalPaidOut;
+  const captionEl = document.getElementById('totals-caption');
+  if(captionEl){
+    captionEl.textContent = filters.showAllMonths
+      ? 'Ukazovatele · všetky mesiace'
+      : `Ukazovatele · ${monthLabel(filters.month)}`;
+  }
   document.getElementById('totals').innerHTML = `
     <div class="stat net">
       <div class="label">Čistý zisk</div>
@@ -1768,7 +2179,14 @@ function renderJobCard(job){
     ? `<button type="button" class="recur-hide" data-hide-job="${job.id}" title="${job.hidden ? 'Zobraziť túto zákazku v zozname' : 'Skryť túto zákazku zo zoznamu'}">${job.hidden ? 'odkryť' : 'skryť'}</button>`
     : '';
 
+  const swipeMode = job.archived ? 'delete' : 'archive';
+  const swipeLabel = job.archived ? '🗑 Zmazať natrvalo' : '🗄 Archivovať';
+
   return `
+    <div class="job-swipe-wrapper" data-swipe-id="${job.id}" data-swipe-mode="${swipeMode}">
+      <div class="job-swipe-bg ${job.archived ? 'is-delete' : 'is-archive'}">
+        <span>${swipeLabel}</span>
+      </div>
     <div class="job ${isOpen ? 'expanded' : ''} ${job.hidden ? 'is-hidden' : ''} ${job.archived ? 'is-archived' : ''}" data-job="${job.id}">
       <div class="job-row" data-toggle="${job.id}">
         <label class="select-check">
@@ -1846,6 +2264,7 @@ function renderJobCard(job){
           }
         </div>
       </div>
+    </div>
     </div>
     `;
 }
@@ -1967,19 +2386,20 @@ function renderFilterBar(){
         <option value="">Všetci brigádnici</option>
         ${names.map(n=>`<option value="${n}" ${filters.worker===n?'selected':''}>${n}</option>`).join('')}
       </select>
-      <label class="unpaid-check">
-        <input type="checkbox" id="filter-unpaid" ${filters.onlyUnpaid ? 'checked':''}>
-        len nezaplatené
-      </label>
-      <button class="btn ghost small" id="toggle-hide-recurring">${filters.hideAllRecurring ? 'Zobraziť pravidelné' : 'Skryť pravidelné'}</button>
-      <label class="unpaid-check">
-        <input type="checkbox" id="filter-show-hidden" ${filters.showHidden ? 'checked':''}>
-        zobraziť skryté
-      </label>
-      <label class="unpaid-check">
-        <input type="checkbox" id="filter-show-archived" ${filters.showArchived ? 'checked':''}>
-        zobraziť archív
-      </label>
+    </div>
+    <div class="quick-filters">
+      <button type="button" class="filter-chip ${filters.onlyUnpaid ? 'active':''}" data-filter-toggle="onlyUnpaid" aria-pressed="${filters.onlyUnpaid}">
+        <span class="fc-dot"></span>Len nezaplatené
+      </button>
+      <button type="button" class="filter-chip ${filters.hideAllRecurring ? 'active':''}" data-filter-toggle="hideAllRecurring" aria-pressed="${filters.hideAllRecurring}">
+        <span class="fc-dot"></span>Skryť pravidelné
+      </button>
+      <button type="button" class="filter-chip ${filters.showHidden ? 'active':''}" data-filter-toggle="showHidden" aria-pressed="${filters.showHidden}">
+        <span class="fc-dot"></span>Zobraziť skryté
+      </button>
+      <button type="button" class="filter-chip ${filters.showArchived ? 'active':''}" data-filter-toggle="showArchived" aria-pressed="${filters.showArchived}">
+        <span class="fc-dot"></span>Zobraziť archív
+      </button>
     </div>
     ${summaryHtml}
   `;
@@ -2001,7 +2421,7 @@ function renderJobsList(){
     list.innerHTML = `<div class="empty">Zatiaľ žiadne zákazky. Pridaj prvú vyššie.</div>`;
     return;
   }
-  const filtered = getFilteredJobs();
+  const filtered = getFilteredJobs().filter(j=>!pendingDeleteIds.has(j.id));
 
   const bulkBar = selectedJobs.size > 0 ? `
     <div class="bulk-bar">
@@ -2831,6 +3251,7 @@ function renderMonthly(){
     return;
   }
   const byMonth = {};
+  const byYear = {};
   jobs.forEach(job=>{
     const key = monthKey(job.date);
     if(!byMonth[key]) byMonth[key] = { jobs: [], earned:0, paidOut:0, owedWorkers:0, unpaidClients:0 };
@@ -2842,13 +3263,41 @@ function renderMonthly(){
     m.paidOut += paid;
     m.owedWorkers += (allocated - paid);
     if(!job.clientPaid) m.unpaidClients += Number(job.price)||0;
+
+    const yKey = key === '—' ? '—' : key.slice(0,4);
+    if(!byYear[yKey]) byYear[yKey] = { earned:0, paidOut:0 };
+    byYear[yKey].earned += Number(job.price)||0;
+    byYear[yKey].paidOut += paid;
   });
   const chartHtml = renderMonthlyChartSVG(byMonth);
   const keys = Object.keys(byMonth).sort((a,b)=> b.localeCompare(a));
-  el.innerHTML = chartHtml + keys.map(key=>{
+  let lastYear = null;
+  const monthsHtml = keys.map(key=>{
     const m = byMonth[key];
     const net = m.earned - m.paidOut;
-    return `
+    const yKey = key === '—' ? '—' : key.slice(0,4);
+    let yearHtml = '';
+    if(yKey !== lastYear){
+      lastYear = yKey;
+      const y = byYear[yKey];
+      const yNet = y.earned - y.paidOut;
+      yearHtml = `
+      <div class="year-card">
+        <div class="year-card-head">${yKey === '—' ? 'Bez dátumu' : yKey}</div>
+        <div class="year-card-stats">
+          <div class="yc-stat">
+            <span class="lbl">Spolu zarobené za rok (hrubé)</span>
+            <span class="val">${fmt(y.earned)}</span>
+          </div>
+          <div class="yc-stat net">
+            <span class="lbl">Čistý zisk za rok</span>
+            <span class="val">${fmt(yNet)}</span>
+          </div>
+        </div>
+      </div>
+      `;
+    }
+    return yearHtml + `
     <div class="month-card">
       <div class="month-head">
         <span class="m-name">${monthLabel(key)}</span>
@@ -2879,6 +3328,7 @@ function renderMonthly(){
     </div>
     `;
   }).join('');
+  el.innerHTML = chartHtml + monthsHtml;
 }
 
 function todayStr(){ return new Date().toISOString().slice(0,10); }
@@ -3074,6 +3524,68 @@ document.getElementById('view-workers').addEventListener('change', (e)=>{
   }
 });
 
+/* ===== Undo toast helpers (namiesto confirm()) ===== */
+let _undoTimer = null;
+let _undoAction = null;
+function showUndoToast(message, undoFn, commitFn){
+  // ak už bežala predchádzajúca akcia s undom, potvrď ju hneď
+  if(_undoAction){
+    clearTimeout(_undoTimer);
+    _undoAction.commit();
+  }
+  _undoAction = { undo: undoFn, commit: commitFn };
+  const toast = document.getElementById('undo-toast');
+  document.getElementById('undo-toast-msg').textContent = message;
+  toast.classList.add('visible');
+  _undoTimer = setTimeout(()=>{
+    if(_undoAction){ _undoAction.commit(); }
+    _undoAction = null;
+    toast.classList.remove('visible');
+  }, 5000);
+}
+function performUndo(){
+  if(!_undoAction) return;
+  clearTimeout(_undoTimer);
+  _undoAction.undo();
+  _undoAction = null;
+  document.getElementById('undo-toast').classList.remove('visible');
+}
+document.getElementById('undo-toast-btn').addEventListener('click', performUndo);
+
+function triggerArchiveJob(jobId){
+  const job = state.jobs.find(j=>j.id===jobId);
+  if(!job) return;
+  job.archived = true;
+  selectedJobs.delete(jobId);
+  scheduleSave();
+  render();
+  showUndoToast('Archivované · Vrátiť späť', ()=>{
+    const j = state.jobs.find(x=>x.id===jobId);
+    if(j){ j.archived = false; scheduleSave(); render(); }
+  }, ()=>{ /* už uložené, nič viac nie je potrebné */ });
+}
+
+function triggerPermanentDelete(jobId){
+  const job = state.jobs.find(j=>j.id===jobId);
+  if(!job) return;
+  pendingDeleteIds.add(jobId);
+  render();
+  showUndoToast('Zmazané natrvalo · Vrátiť späť', ()=>{
+    pendingDeleteIds.delete(jobId);
+    render();
+  }, ()=>{
+    pendingDeleteIds.delete(jobId);
+    if(job.financeEntryId){
+      state.finance.entries = state.finance.entries.filter(e=>e.id !== job.financeEntryId);
+    }
+    state.jobs = state.jobs.filter(j=>j.id!==jobId);
+    delete expanded[jobId];
+    selectedJobs.delete(jobId);
+    scheduleSave();
+    render();
+  });
+}
+
 document.getElementById('add-job-btn').addEventListener('click', ()=>{
   const date = document.getElementById('new-date').value || new Date().toISOString().slice(0,10);
   const client = document.getElementById('new-client').value.trim();
@@ -3175,12 +3687,7 @@ document.getElementById('jobs-list').addEventListener('click', (e)=>{
 
   const archiveJob = e.target.closest('[data-archive-job]');
   if(archiveJob){
-    const jobId = archiveJob.dataset.archiveJob;
-    const job = state.jobs.find(j=>j.id===jobId);
-    job.archived = true;
-    selectedJobs.delete(jobId);
-    scheduleSave();
-    render();
+    triggerArchiveJob(archiveJob.dataset.archiveJob);
     return;
   }
 
@@ -3196,17 +3703,7 @@ document.getElementById('jobs-list').addEventListener('click', (e)=>{
 
   const delJobPermanent = e.target.closest('[data-del-job-permanent]');
   if(delJobPermanent){
-    const jobId = delJobPermanent.dataset.delJobPermanent;
-    if(!confirm('Natrvalo zmazať túto zákazku? Táto akcia sa nedá vrátiť späť.')) return;
-    const jobToDelete = state.jobs.find(j=>j.id===jobId);
-    if(jobToDelete && jobToDelete.financeEntryId){
-      state.finance.entries = state.finance.entries.filter(e=>e.id !== jobToDelete.financeEntryId);
-    }
-    state.jobs = state.jobs.filter(j=>j.id!==jobId);
-    delete expanded[jobId];
-    selectedJobs.delete(jobId);
-    scheduleSave();
-    render();
+    triggerPermanentDelete(delJobPermanent.dataset.delJobPermanent);
     return;
   }
 
@@ -3235,11 +3732,17 @@ document.getElementById('jobs-list').addEventListener('click', (e)=>{
 
   const bulkArchive = e.target.closest('#bulk-archive');
   if(bulkArchive){
-    if(!confirm(`Archivovať ${selectedJobs.size} vybraných zákaziek?`)) return;
-    state.jobs.forEach(j=>{ if(selectedJobs.has(j.id)) j.archived = true; });
+    const ids = [...selectedJobs];
+    if(ids.length === 0) return;
+    ids.forEach(id=>{ const j = state.jobs.find(x=>x.id===id); if(j) j.archived = true; });
     selectedJobs.clear();
     scheduleSave();
     render();
+    showUndoToast(`Archivovaných ${ids.length} · Vrátiť späť`, ()=>{
+      ids.forEach(id=>{ const j = state.jobs.find(x=>x.id===id); if(j) j.archived = false; });
+      scheduleSave();
+      render();
+    }, ()=>{ /* už uložené */ });
     return;
   }
 });
@@ -3332,7 +3835,13 @@ document.getElementById('filter-bar').addEventListener('click', (e)=>{
   if(e.target.closest('#month-prev')){ shiftMonth(-1); render(); return; }
   if(e.target.closest('#month-next')){ shiftMonth(1); render(); return; }
   if(e.target.closest('#month-toggle-all')){ filters.showAllMonths = !filters.showAllMonths; render(); return; }
-  if(e.target.closest('#toggle-hide-recurring')){ filters.hideAllRecurring = !filters.hideAllRecurring; render(); return; }
+  const filterChip = e.target.closest('[data-filter-toggle]');
+  if(filterChip){
+    const key = filterChip.dataset.filterToggle;
+    filters[key] = !filters[key];
+    render();
+    return;
+  }
   const calDay = e.target.closest('.mini-cal-day[data-cal-date]');
   if(calDay){
     const dateStr = calDay.dataset.calDate;
@@ -3358,18 +3867,6 @@ document.getElementById('filter-bar').addEventListener('change', (e)=>{
   if(e.target.id === 'filter-worker'){
     filters.worker = e.target.value;
     renderJobsList();
-  }
-  if(e.target.id === 'filter-unpaid'){
-    filters.onlyUnpaid = e.target.checked;
-    renderJobsList();
-  }
-  if(e.target.id === 'filter-show-hidden'){
-    filters.showHidden = e.target.checked;
-    render();
-  }
-  if(e.target.id === 'filter-show-archived'){
-    filters.showArchived = e.target.checked;
-    render();
   }
 });
 
@@ -3486,6 +3983,123 @@ document.getElementById('view-recurring').addEventListener('change', (e)=>{
   if(field === 'name') window._tplDraft[idx].name = e.target.value;
   if(field === 'value') window._tplDraft[idx].value = parseFloat(e.target.value) || 0;
 });
+
+/* ===== Swipe gestá na kartách zákaziek ===== */
+(function setupJobSwipe(){
+  const list = document.getElementById('jobs-list');
+  const SWIPE_THRESHOLD = -70;
+  const MAX_DRAG = -120;
+  let ctx = null;
+
+  function wrapperFrom(el){ return el.closest ? el.closest('.job-swipe-wrapper') : null; }
+
+  list.addEventListener('pointerdown', (e)=>{
+    if(e.pointerType === 'mouse' && e.button !== 0) return;
+    const wrapper = wrapperFrom(e.target);
+    if(!wrapper) return;
+    const jobEl = wrapper.querySelector('.job');
+    if(!jobEl || jobEl.classList.contains('expanded')) return;
+    if(e.target.closest('input, button, label, textarea, select, a')) return;
+    ctx = {
+      wrapper,
+      jobEl,
+      row: wrapper.querySelector('.job-row'),
+      bg: wrapper.querySelector('.job-swipe-bg'),
+      startX: e.clientX,
+      startY: e.clientY,
+      dx: 0,
+      pointerId: e.pointerId,
+      lock: null
+    };
+  });
+
+  list.addEventListener('pointermove', (e)=>{
+    if(!ctx || e.pointerId !== ctx.pointerId) return;
+    const dx = e.clientX - ctx.startX;
+    const dy = e.clientY - ctx.startY;
+    if(ctx.lock === null){
+      if(Math.abs(dx) > 8 || Math.abs(dy) > 8){
+        ctx.lock = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+        if(ctx.lock === 'h') ctx.wrapper.classList.add('dragging');
+      }
+    }
+    if(ctx.lock !== 'h') return;
+    e.preventDefault();
+    const clamped = Math.min(0, Math.max(dx, MAX_DRAG));
+    ctx.dx = clamped;
+    ctx.row.style.transform = `translateX(${clamped}px)`;
+    if(ctx.bg) ctx.bg.style.opacity = String(Math.min(1, Math.abs(clamped) / 80));
+  }, { passive: false });
+
+  function endDrag(commitIfPastThreshold){
+    if(!ctx) return;
+    const { wrapper, row, bg, dx } = ctx;
+    wrapper.classList.remove('dragging');
+    if(commitIfPastThreshold && dx <= SWIPE_THRESHOLD){
+      const jobId = wrapper.dataset.swipeId;
+      const mode = wrapper.dataset.swipeMode;
+      row.style.transition = 'transform 0.18s ease, opacity 0.18s ease';
+      row.style.transform = 'translateX(-100%)';
+      row.style.opacity = '0';
+      setTimeout(()=>{
+        if(mode === 'archive') triggerArchiveJob(jobId);
+        else triggerPermanentDelete(jobId);
+      }, 160);
+    } else {
+      row.style.transform = '';
+      if(bg) bg.style.opacity = '';
+    }
+    ctx = null;
+  }
+
+  list.addEventListener('pointerup', (e)=>{
+    if(!ctx || e.pointerId !== ctx.pointerId) return;
+    endDrag(true);
+  });
+  list.addEventListener('pointercancel', ()=>{ endDrag(false); });
+})();
+
+/* ===== Plávajúce tlačidlo "+" a rýchle pridanie zákazky ===== */
+(function setupQuickAdd(){
+  const fabBtn = document.getElementById('fab-add-job');
+  const overlay = document.getElementById('quick-add-overlay');
+  const sheet = document.getElementById('quick-add-sheet');
+  if(!fabBtn || !overlay || !sheet) return;
+
+  function openQuickAdd(){
+    const jobsTabBtn = document.querySelector('.tab[data-tab="jobs"]');
+    if(jobsTabBtn && !jobsTabBtn.classList.contains('active')) jobsTabBtn.click();
+    document.getElementById('qa-date').value = todayStr();
+    overlay.classList.add('visible');
+    sheet.classList.add('visible');
+    setTimeout(()=>{ document.getElementById('qa-client').focus(); }, 150);
+  }
+  function closeQuickAdd(){
+    overlay.classList.remove('visible');
+    sheet.classList.remove('visible');
+  }
+
+  fabBtn.addEventListener('click', openQuickAdd);
+  overlay.addEventListener('click', closeQuickAdd);
+  document.getElementById('quick-add-close').addEventListener('click', closeQuickAdd);
+
+  document.getElementById('qa-submit').addEventListener('click', ()=>{
+    const date = document.getElementById('qa-date').value || todayStr();
+    const client = document.getElementById('qa-client').value.trim();
+    const price = parseFloat(document.getElementById('qa-price').value) || 0;
+    const note = document.getElementById('qa-note').value.trim();
+    if(!client && !price){ document.getElementById('qa-client').focus(); return; }
+    const jobId = uid();
+    state.jobs.push({ id: jobId, date, client, price, note, duration: '', clientPaid: false, payments: [] });
+    expanded[jobId] = true;
+    scheduleSave();
+    render();
+    document.getElementById('qa-client').value = '';
+    document.getElementById('qa-price').value = '';
+    document.getElementById('qa-note').value = '';
+    closeQuickAdd();
+  });
+})();
 </script>
 </body>
 </html>
