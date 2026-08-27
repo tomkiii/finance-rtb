@@ -1515,14 +1515,17 @@ body.admin-readonly button:not(#admin-exit-btn):not(#logout-btn):not(.tab){
   .job-row .client{ font-size: 14px; }
 }
 
-/* --- Mini kalendár: kompaktnejšie na telefóne, celý týždeň vždy viditeľný --- */
+/* --- Mini kalendár: menší a kompaktnejší na telefóne --- */
 @media (max-width: 640px){
-  .mini-cal{ margin-bottom: 10px; }
-  .mini-cal-weekdays{ gap: 3px; margin-bottom: 3px; }
-  .mini-cal-weekdays span{ font-size: 8.5px; }
-  .mini-cal-grid{ gap: 3px; }
-  .mini-cal-day{ font-size: 10px; border-radius: 5px; }
-  .mini-cal-legend{ flex-wrap: wrap; row-gap: 4px; gap: 8px; font-size: 9px; }
+  .mini-cal{
+    margin: 0 auto 10px;
+    max-width: 240px;
+  }
+  .mini-cal-weekdays{ gap: 2px; margin-bottom: 2px; }
+  .mini-cal-weekdays span{ font-size: 7.5px; }
+  .mini-cal-grid{ gap: 2px; }
+  .mini-cal-day{ font-size: 9px; border-radius: 4px; }
+  .mini-cal-legend{ flex-wrap: wrap; row-gap: 4px; gap: 8px; font-size: 8.5px; justify-content: center; }
 }
 
 /* ===== Swipe karty zákaziek ===== */
