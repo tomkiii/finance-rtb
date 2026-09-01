@@ -25,11 +25,17 @@
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
+  html{ -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   body{
     background: var(--bg);
     color: var(--text);
     font-family: 'Inter', sans-serif;
     min-height:100vh;
+    overscroll-behavior-y: contain;
+  }
+  button, .btn, .filter-chip, .tab, input, select, textarea{
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
   .wrap{
     max-width: 880px;
@@ -163,6 +169,7 @@
     display:flex;
     flex-direction: column;
     gap: 5px;
+    position: relative;
   }
   .field label{
     font-family:'IBM Plex Mono', monospace;
@@ -216,6 +223,18 @@
     padding: 4px 4px;
     margin-bottom: 12px;
     overflow: hidden;
+  }
+  /* Jemné odlíšenie karty zákazky podľa dátumu - dnes/zajtra/minulosť */
+  .job.is-today-job{
+    background: linear-gradient(rgba(74,222,154,0.05), rgba(74,222,154,0.05)), var(--surface);
+    border-color: rgba(74,222,154,0.3);
+  }
+  .job.is-tomorrow-job{
+    background: linear-gradient(rgba(95,168,255,0.05), rgba(95,168,255,0.05)), var(--surface);
+    border-color: rgba(95,168,255,0.28);
+  }
+  .job.is-past-job{
+    opacity: 0.82;
   }
   .job-row{
     display:flex;
@@ -864,7 +883,63 @@
   .month-summary .ms-earned{ color: var(--green); font-weight:600; }
   .month-summary .dot{ opacity:0.5; }
 
-  /* Mini calendar */
+  /* Panel "Dnes / zajtra" - skryteľný rýchly prehľad */
+  .dtp-toggle-row{
+    margin-bottom: 12px;
+  }
+  .dtp-panel{
+    display:flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .dtp-group{
+    flex: 1;
+    min-width: 220px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .dtp-group-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-soft);
+    margin-bottom: 8px;
+  }
+  .dtp-row{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    padding: 5px 0;
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+  }
+  .dtp-row:first-of-type{ border-top: none; }
+  .dtp-row .dtp-client{ flex:1; font-weight:600; }
+  .dtp-row .dtp-duration{ color: var(--text-soft); font-family:'IBM Plex Mono', monospace; font-size: 11px; }
+  .dtp-row .dtp-price{ font-family:'IBM Plex Mono', monospace; font-weight:600; }
+  .dtp-empty{ color: var(--text-soft); font-size: 12.5px; }
+
+  /* Návrh ceny podľa histórie klienta - pozicované absolútne pod poľom,
+     aby jeho zobrazenie/skrytie neposúvalo zvyšok formulára */
+  .price-hint{
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 3px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: var(--blue);
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 3;
+    background: var(--bg);
+    padding: 1px 4px 1px 0;
+    border-radius: 4px;
+  }
   .mini-cal{
     margin-bottom: 14px;
   }
@@ -901,13 +976,29 @@
     position: relative;
   }
   .mini-cal-day.empty{ background: none; border-color: transparent; }
-  .mini-cal-day.has-jobs{ cursor:pointer; color: var(--text); border-color: transparent; }
+  .mini-cal-day.has-jobs{ cursor:pointer; color: var(--text); border-color: transparent; background: var(--surface-2); }
   .mini-cal-day.has-jobs:hover{ outline: 1px solid var(--blue); outline-offset: -1px; }
-  .mini-cal-day.tier-1{ background: var(--blue-dim); }
-  .mini-cal-day.tier-2{ background: rgba(95,168,255,0.28); }
-  .mini-cal-day.tier-3{ background: var(--blue); color: #0F1116; font-weight:700; }
   .mini-cal-day.is-today{ border-color: var(--green); }
-  .mini-cal-day.has-unpaid::after{
+  .mini-cal-day .cal-load-bar{
+    position:absolute;
+    left: 2px;
+    right: 2px;
+    bottom: 0;
+    height: 3px;
+    border-radius: 2px 2px 0 0;
+    background: var(--blue);
+  }
+  .mini-cal-day .cal-count{
+    position:absolute;
+    bottom: 4px;
+    right: 3px;
+    font-size: 8px;
+    line-height:1;
+    color: var(--blue);
+    font-weight: 600;
+  }
+  .mini-cal-day.has-unpaid::after,
+  .mini-cal-day.all-paid::after{
     content:'';
     position:absolute;
     top: 3px;
@@ -915,8 +1006,9 @@
     width: 5px;
     height: 5px;
     border-radius: 50%;
-    background: var(--amber);
   }
+  .mini-cal-day.has-unpaid::after{ background: var(--amber); }
+  .mini-cal-day.all-paid::after{ background: var(--green); }
   .mini-cal-legend{
     display:flex;
     align-items:center;
@@ -933,6 +1025,42 @@
     border-radius: 3px;
     margin-right: 4px;
     vertical-align: -1px;
+  }
+
+  /* Plynulý prechod medzi mesiacmi v mini kalendári.
+     Wrapper má overflow:hidden, aby posun nespôsobil vodorovné scrollovanie;
+     smer (dir-next/dir-prev) sa nastavuje v JS podľa toho, či sa
+     prechádza na nasledujúci/predchádzajúci mesiac. */
+  .mini-cal-anim{
+    overflow: hidden;
+    border-radius: 8px;
+  }
+  .mini-cal-anim.dir-next .mini-cal{ animation: calSlideNext 0.32s cubic-bezier(.25,.7,.3,1); }
+  .mini-cal-anim.dir-prev .mini-cal{ animation: calSlidePrev 0.32s cubic-bezier(.25,.7,.3,1); }
+  @keyframes calSlideNext{
+    from{ opacity: 0; transform: translateX(18px); }
+    to{ opacity: 1; transform: translateX(0); }
+  }
+  @keyframes calSlidePrev{
+    from{ opacity: 0; transform: translateX(-18px); }
+    to{ opacity: 1; transform: translateX(0); }
+  }
+  /* Jemné prekríženie čísel dní pri prechode (zvýrazní pocit plynulosti) */
+  .mini-cal-anim.dir-next .mini-cal-day,
+  .mini-cal-anim.dir-prev .mini-cal-day{
+    animation: calDayFade 0.28s ease backwards;
+  }
+  @keyframes calDayFade{
+    from{ opacity: 0; }
+    to{ opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .mini-cal-anim.dir-next .mini-cal,
+    .mini-cal-anim.dir-prev .mini-cal,
+    .mini-cal-anim.dir-next .mini-cal-day,
+    .mini-cal-anim.dir-prev .mini-cal-day{
+      animation: none;
+    }
   }
 
   @keyframes flashHighlight{
@@ -1151,6 +1279,26 @@
   }
   .sync-dot.saving{ background: var(--amber); }
   .sync-dot.error{ background: var(--red); }
+  .sync-dot.offline{ background: var(--text-soft); }
+
+  /* Animácia "sypania peňazí" pri označení zákazky ako zaplatenej */
+  .money-burst{
+    position: fixed;
+    width: 0; height: 0;
+    pointer-events: none;
+    z-index: 9999;
+  }
+  .money-bit{
+    position: absolute;
+    left: 0; top: 0;
+    font-size: 15px;
+    transform: translate(0,0) rotate(0deg);
+    animation: moneyFall 550ms ease-in forwards;
+  }
+  @keyframes moneyFall{
+    0%{ transform: translate(0,0) rotate(0deg) scale(1); opacity: 1; }
+    100%{ transform: translate(var(--dx), 38px) rotate(var(--rot)) scale(0.85); opacity: 0; }
+  }
 body.admin-readonly .add-form,
 body.admin-readonly #add-job-btn,
 body.admin-readonly .del,
@@ -1406,6 +1554,11 @@ body.admin-readonly button:not(#admin-exit-btn):not(#logout-btn):not(.tab){
      (Safari zooomuje, ak je font-size inputu menší ako 16px) */
   input, select, textarea{ font-size: 16px !important; }
 
+  /* Väčšie dotykové plochy pre bežné tlačidlá (min. ~40px) */
+  .btn.small{ padding: 9px 12px; min-height: 38px; }
+  .month-nav .btn.small{ min-width: 38px; display:flex; align-items:center; justify-content:center; }
+  .filter-chip{ min-height: 36px; }
+
   /* --- Sadzba --- */
   .rate-row{ flex-wrap: wrap; row-gap: 6px; }
 
@@ -1441,6 +1594,7 @@ body.admin-readonly button:not(#admin-exit-btn):not(#logout-btn):not(.tab){
     width: 100%; min-width: 0;
   }
   .add-form .btn{ width: 100%; margin-top: 2px; }
+  .price-hint{ white-space: normal; max-width: 100%; }
 
   /* --- Riadok zákazky: rozbaľovanie do viacerých riadkov namiesto orezania --- */
   .job-row{ flex-wrap: wrap; row-gap: 8px; padding: 12px 10px; column-gap: 8px; }
@@ -1523,23 +1677,23 @@ body.admin-readonly button:not(#admin-exit-btn):not(#logout-btn):not(.tab){
     max-width: 100%;
   }
   .mini-cal-weekdays{
-    grid-template-columns: repeat(7, minmax(0, 30px));
+    grid-template-columns: repeat(7, minmax(0, 38px));
     justify-content: center;
-    gap: 3px;
-    margin-bottom: 2px;
+    gap: 4px;
+    margin-bottom: 3px;
   }
-  .mini-cal-weekdays span{ font-size: 7px; }
+  .mini-cal-weekdays span{ font-size: 8px; }
   .mini-cal-grid{
-    grid-template-columns: repeat(7, minmax(0, 30px));
+    grid-template-columns: repeat(7, minmax(0, 38px));
     justify-content: center;
-    gap: 3px;
+    gap: 4px;
   }
   .mini-cal-day{
-    width: 30px;
-    height: 30px;
+    width: 38px;
+    height: 38px;
     aspect-ratio: unset;
-    font-size: 9px;
-    border-radius: 4px;
+    font-size: 10.5px;
+    border-radius: 6px;
   }
   .mini-cal-legend{ flex-wrap: wrap; row-gap: 4px; gap: 8px; font-size: 8.5px; justify-content: center; }
 }
@@ -1696,6 +1850,42 @@ body.admin-readonly .fab-add{ display: none; }
 .quick-add-row{ display: flex; gap: 12px; }
 .quick-add-row .field{ flex: 1; }
 .quick-add-body .field input{ width: 100%; min-width: 0; }
+
+/* ===== Zálohy ===== */
+.backup-auto-row{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  background: var(--surface-2);
+}
+.backup-auto-row .ba-date{
+  font-family:'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--text);
+}
+.backup-auto-row .ba-restore{
+  font-family:'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--blue);
+  background: var(--blue-dim);
+  color: var(--blue);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.backup-auto-row .ba-restore:hover{ opacity: 0.85; }
+.backup-hint{
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: var(--text-soft);
+  margin: 6px 0 4px;
+}
 </style>
 </head>
 <body>
@@ -1724,6 +1914,7 @@ body.admin-readonly .fab-add{ display: none; }
   <div class="user-bar">
     <span><span class="sync-dot" id="sync-dot"></span><span id="sync-label">Uložené</span></span>
     <span class="email" id="user-email"></span>
+    <button class="btn ghost small" id="backup-btn" title="Zálohy">💾 Zálohy</button>
     <button class="btn ghost small" id="admin-btn" style="display:none;">🛡 Admin</button>
     <button class="btn ghost small" id="logout-btn">Odhlásiť sa</button>
   </div>
@@ -1744,13 +1935,17 @@ body.admin-readonly .fab-add{ display: none; }
 
   <div class="tabs">
     <button class="tab active" data-tab="jobs">Zákazky</button>
-    <button class="tab" data-tab="recurring">Opakované</button>
-    <button class="tab" data-tab="monthly">Mesačne</button>
+    <button class="tab" data-tab="recurring">Opakované Z.</button>
+    <button class="tab" data-tab="monthly">Prehľad</button>
     <button class="tab" data-tab="workers">Brigádnici</button>
     <button class="tab" data-tab="finance">Financie</button>
   </div>
 
   <div id="view-jobs">
+    <div class="dtp-toggle-row">
+      <button type="button" class="btn ghost small" id="dtp-toggle-btn">📅 Dnes / zajtra</button>
+    </div>
+    <div id="dtp-panel" class="dtp-panel" style="display:none;"></div>
     <div class="add-form">
       <div class="field">
         <label for="new-date">Dátum</label>
@@ -1758,14 +1953,15 @@ body.admin-readonly .fab-add{ display: none; }
       </div>
       <div class="field client">
         <label for="new-client">Pre koho</label>
-        <input type="text" id="new-client" placeholder="Meno klienta / firmy">
+        <input type="text" id="new-client" list="known-clients" placeholder="Meno klienta / firmy">
       </div>
       <div class="field price">
         <label for="new-price">Cena (€)</label>
         <input type="number" id="new-price" placeholder="0" step="0.01">
+        <span class="price-hint" id="new-price-hint" style="display:none;"></span>
       </div>
       <div class="field duration">
-        <label for="new-duration">Trvanie (nepovinné)</label>
+        <label for="new-duration">Čas</label>
         <input type="text" id="new-duration" placeholder="napr. 2,5 h">
       </div>
       <div class="field note">
@@ -1774,6 +1970,7 @@ body.admin-readonly .fab-add{ display: none; }
       </div>
       <button class="btn" id="add-job-btn">+ Pridať zákazku</button>
     </div>
+    <datalist id="known-clients"></datalist>
     <div class="filter-bar" id="filter-bar"></div>
     <div id="jobs-list"></div>
   </div>
@@ -1802,12 +1999,13 @@ body.admin-readonly .fab-add{ display: none; }
   <div class="quick-add-body">
     <div class="field">
       <label for="qa-client">Pre koho</label>
-      <input type="text" id="qa-client" placeholder="Meno klienta / firmy">
+      <input type="text" id="qa-client" list="known-clients" placeholder="Meno klienta / firmy">
     </div>
     <div class="quick-add-row">
       <div class="field price">
         <label for="qa-price">Cena (€)</label>
         <input type="number" id="qa-price" placeholder="0" step="0.01" inputmode="decimal">
+        <span class="price-hint" id="qa-price-hint" style="display:none;"></span>
       </div>
       <div class="field date">
         <label for="qa-date">Dátum</label>
@@ -1819,6 +2017,30 @@ body.admin-readonly .fab-add{ display: none; }
       <input type="text" id="qa-note" placeholder="napr. adresa, čo sa robilo">
     </div>
     <button type="button" class="btn" id="qa-submit" style="width:100%;">+ Pridať zákazku</button>
+  </div>
+</div>
+
+<div id="backup-overlay" class="quick-add-overlay"></div>
+<div id="backup-sheet" class="quick-add-sheet" role="dialog" aria-modal="true" aria-labelledby="backup-title">
+  <div class="quick-add-handle"></div>
+  <div class="quick-add-header">
+    <span id="backup-title">Zálohy</span>
+    <button type="button" id="backup-close" class="quick-add-close" aria-label="Zavrieť">✕</button>
+  </div>
+  <div class="quick-add-body">
+    <div class="section-label">Manuálna záloha</div>
+    <div class="backup-hint">Stiahni si dáta ako súbor, alebo nahraj skôr stiahnutú zálohu naspäť.</div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button type="button" class="btn" id="backup-export-btn" style="flex:1; min-width:140px;">⬇ Stiahnuť zálohu (.json)</button>
+      <button type="button" class="btn ghost" id="backup-import-btn" style="flex:1; min-width:140px;">⬆ Nahrať zo súboru</button>
+    </div>
+    <input type="file" id="backup-import-input" accept="application/json,.json" style="display:none;">
+    <div class="section-label" style="margin-top:18px;">Automatické zálohy (posledných 20)</div>
+    <div class="backup-hint">Appka si sama priebežne ukladá zálohy počas používania (max. 1x za cca 12 minút).</div>
+    <div id="backup-auto-list">Načítavam…</div>
+    <div class="section-label" style="margin-top:18px;">Denné zálohy (posledných 30 dní)</div>
+    <div class="backup-hint">Navyše sa raz denne uloží samostatná záloha, ktorá sa neprepisuje priebežnými zálohami — takže sa dá vrátiť aj o pár dní/týždňov späť, nielen o pár hodín.</div>
+    <div id="backup-daily-list">Načítavam…</div>
   </div>
 </div>
 
@@ -1845,6 +2067,17 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+// Offline režim: appka si dáta cachuje lokálne (IndexedDB) a keď nie je pripojenie,
+// naďalej sa dá normálne pracovať (čítať aj ukladať) - zmeny sa len odošlú na server,
+// hneď ako sa pripojenie obnoví. synchronizeTabs umožňuje mať appku otvorenú vo viacerých
+// kartách naraz bez konfliktu.
+db.enablePersistence({ synchronizeTabs: true }).catch(err=>{
+  if(err.code === 'failed-precondition'){
+    console.warn('Offline cache appky sa nepodarilo zapnúť (viacero kariet bez synchronizácie).');
+  } else if(err.code === 'unimplemented'){
+    console.warn('Tento prehliadač nepodporuje offline režim appky.');
+  }
+});
 let currentUser = null;
 let isAdmin = false;
 let viewingUid = null;   // ak nie je null, pozeráme cudzie dáta (read-only)
@@ -1909,6 +2142,7 @@ auth.onAuthStateChanged(async user=>{
     document.getElementById('admin-btn').style.display = isAdmin ? '' : 'none';
 
     load();
+    setSyncStatus(navigator.onLine ? 'ok' : 'offline');
   }else{
     overlay.style.display = 'flex';
     appWrap.style.display = 'none';
@@ -1958,8 +2192,33 @@ function weekdayLabel(v){ return (WEEKDAYS_SK.find(w=>w.value===v)||{}).label ||
 function weekdayShort(v){ return (WEEKDAYS_SK.find(w=>w.value===v)||{}).short || ''; }
 window._tplDaysDraft = [];
 let filters = { month: new Date().toISOString().slice(0,7), showAllMonths: false, search: '', worker: '', onlyUnpaid: false, hideAllRecurring: false, showHidden: false, showArchived: false };
+// Smer prechodu medzi mesiacmi v mini kalendári: 1 = ďalší mesiac, -1 = predchádzajúci, 0 = bez animácie
+let calDirection = 0;
 
 function uid(){ return Math.random().toString(36).slice(2,10); }
+
+// Krátka (cca 0.5s), nenápadná animácia "sypania peňazí" - potvrdenie pri označení
+// zákazky ako zaplatenej. Objaví sa presne pri kliknutom prvku, sama sa po chvíli odstráni.
+function playMoneyBurst(x, y){
+  const emojis = ['💶','💵','💰'];
+  const container = document.createElement('div');
+  container.className = 'money-burst';
+  container.style.left = x + 'px';
+  container.style.top = y + 'px';
+  for(let i=0;i<6;i++){
+    const span = document.createElement('span');
+    span.className = 'money-bit';
+    span.textContent = emojis[i % emojis.length];
+    const dx = Math.round(Math.random()*50 - 25);
+    const rot = Math.round(Math.random()*70 - 35);
+    span.style.setProperty('--dx', dx + 'px');
+    span.style.setProperty('--rot', rot + 'deg');
+    span.style.animationDelay = Math.round(Math.random()*60) + 'ms';
+    container.appendChild(span);
+  }
+  document.body.appendChild(container);
+  setTimeout(()=> container.remove(), 700);
+}
 function fmt(n){ return (Math.round((n||0)*100)/100).toFixed(2) + ' €'; }
 function fmtDate(d){
   if(!d) return '—';
@@ -1979,10 +2238,52 @@ function setSyncStatus(mode){
   const dot = document.getElementById('sync-dot');
   const label = document.getElementById('sync-label');
   if(!dot || !label) return;
-  dot.classList.remove('saving','error');
-  if(mode === 'saving'){ dot.classList.add('saving'); label.textContent = 'Ukladá sa…'; }
+  dot.classList.remove('saving','error','offline');
+  if(mode === 'offline'){ dot.classList.add('offline'); label.textContent = 'Offline · zmeny sa uložia po pripojení'; }
+  else if(mode === 'saving'){ dot.classList.add('saving'); label.textContent = navigator.onLine ? 'Ukladá sa…' : 'Offline · zmeny sa uložia po pripojení'; }
   else if(mode === 'error'){ dot.classList.add('error'); label.textContent = 'Chyba pri ukladaní'; }
   else{ label.textContent = 'Uložené'; }
+}
+
+// ====== OFFLINE / ONLINE STAV ======
+// Appka funguje aj bez pripojenia vďaka Firestore cache (enablePersistence vyššie):
+// dáta sa dajú aj offline čítať aj upravovať, appka len viditeľne upozorní, že zmeny
+// čakajú na odoslanie, kým sa pripojenie neobnoví (vtedy sa odošlú automaticky).
+window.addEventListener('offline', ()=>{ setSyncStatus('offline'); });
+window.addEventListener('online', ()=>{ setSyncStatus('saving'); setTimeout(()=> setSyncStatus('ok'), 800); });
+
+function normalizeState(parsed){
+  const s = Object.assign({ jobs: [], settings: { rate: 10, autoTransferJobsToFinance: false }, templates: [], finance: { entries: [], recurringTemplates: [], customCategories: { income: [], expense: [] } } }, parsed || {});
+  if(!s.settings) s.settings = { rate: 10, autoTransferJobsToFinance: false };
+  if(!s.finance) s.finance = { entries: [], recurringTemplates: [], customCategories: { income: [], expense: [] } };
+  if(!s.finance.entries) s.finance.entries = [];
+  if(!s.finance.recurringTemplates) s.finance.recurringTemplates = [];
+  if(!s.finance.customCategories) s.finance.customCategories = { income: [], expense: [] };
+  if(!s.finance.customCategories.income) s.finance.customCategories.income = [];
+  if(!s.finance.customCategories.expense) s.finance.customCategories.expense = [];
+  s.finance.entries.forEach(e=>{ if(!e.account) e.account = 'tatra_osobny'; if(e.account==='osobny') e.account='tatra_osobny'; if(e.account==='firemny') e.account='tatra_sro'; if(e.jobId === undefined) e.jobId = null; });
+  (s.finance.recurringTemplates||[]).forEach(t=>{ if(t.account==='osobny') t.account='tatra_osobny'; if(t.account==='firemny') t.account='tatra_sro'; });
+  if(s.settings.autoTransferJobsToFinance === undefined) s.settings.autoTransferJobsToFinance = false;
+  if(!s.templates) s.templates = [];
+  s.templates.forEach(t=>{
+    if(!t.weekdays){
+      t.weekdays = t.frequency === 'daily' ? [0,1,2,3,4,5,6] : [t.weekday];
+    }
+  });
+  if(!s.jobs) s.jobs = [];
+  const rateForImport = Number(s.settings.rate) || 10;
+  s.jobs.forEach(j=>{
+    if(j.clientPaid === undefined) j.clientPaid = false;
+    if(j.note === undefined) j.note = '';
+    if(j.duration === undefined) j.duration = '';
+    if(j.financeEntryId === undefined) j.financeEntryId = null;
+    if(!j.payments) j.payments = [];
+    j.payments.forEach(p=>{
+      if(p.mode === undefined) p.mode = 'hours';
+      if(p.value === undefined) p.value = p.mode === 'hours' ? (p.amount||0)/rateForImport : (p.amount||0);
+    });
+  });
+  return s;
 }
 
 async function load(){
@@ -1991,36 +2292,9 @@ async function load(){
   try{
     const docSnap = await db.collection('userData').doc(targetUid).get();
     if(docSnap.exists && docSnap.data() && docSnap.data().state){
-      const parsed = JSON.parse(docSnap.data().state);
-      state = Object.assign({ jobs: [], settings: { rate: 10, autoTransferJobsToFinance: false }, templates: [], finance: { entries: [], recurringTemplates: [], customCategories: { income: [], expense: [] } } }, parsed);
-      if(!state.finance) state.finance = { entries: [], recurringTemplates: [], customCategories: { income: [], expense: [] } };
-      if(!state.finance.entries) state.finance.entries = [];
-      if(!state.finance.recurringTemplates) state.finance.recurringTemplates = [];
-      if(!state.finance.customCategories) state.finance.customCategories = { income: [], expense: [] };
-      if(!state.finance.customCategories.income) state.finance.customCategories.income = [];
-      if(!state.finance.customCategories.expense) state.finance.customCategories.expense = [];
-      state.finance.entries.forEach(e=>{ if(!e.account) e.account = 'tatra_osobny'; if(e.account==='osobny') e.account='tatra_osobny'; if(e.account==='firemny') e.account='tatra_sro'; if(e.jobId === undefined) e.jobId = null; });
-      (state.finance.recurringTemplates||[]).forEach(t=>{ if(t.account==='osobny') t.account='tatra_osobny'; if(t.account==='firemny') t.account='tatra_sro'; });
-      state.jobs.forEach(j=>{ /* jobs themselves have no account field; their finance entries were migrated above */ });
-      if(state.settings.autoTransferJobsToFinance === undefined) state.settings.autoTransferJobsToFinance = false;
-      if(!state.templates) state.templates = [];
-      state.templates.forEach(t=>{
-        if(!t.weekdays){
-          t.weekdays = t.frequency === 'daily' ? [0,1,2,3,4,5,6] : [t.weekday];
-        }
-      });
-      state.jobs.forEach(j=>{
-        if(j.clientPaid === undefined) j.clientPaid = false;
-        if(j.note === undefined) j.note = '';
-        if(j.duration === undefined) j.duration = '';
-        if(j.financeEntryId === undefined) j.financeEntryId = null;
-        j.payments.forEach(p=>{
-          if(p.mode === undefined) p.mode = 'hours';
-          if(p.value === undefined) p.value = p.mode === 'hours' ? (p.amount||0)/rate() : (p.amount||0);
-        });
-      });
+      state = normalizeState(JSON.parse(docSnap.data().state));
     } else {
-      state = { jobs: [], settings: { rate: 10, autoTransferJobsToFinance: false }, templates: [], finance: { entries: [], recurringTemplates: [], customCategories: { income: [], expense: [] } } };
+      state = normalizeState({});
     }
   }catch(e){
     console.error('Načítanie zlyhalo', e);
@@ -2030,7 +2304,7 @@ async function load(){
 }
 
 function scheduleSave(){
-  setSyncStatus('saving');
+  setSyncStatus(navigator.onLine ? 'saving' : 'offline');
   clearTimeout(saveTimer);
   saveTimer = setTimeout(save, 600);
 }
@@ -2044,11 +2318,254 @@ async function save(){
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     setSyncStatus('ok');
+    maybeCreateAutoBackup();
+    maybeCreateDailyBackup();
   }catch(e){
     console.error('Uloženie zlyhalo', e);
     setSyncStatus('error');
   }
 }
+
+// ====== AUTOMATICKÉ ZÁLOHY ======
+const BACKUP_THROTTLE_MS = 12 * 60 * 1000; // max 1 automatická záloha za ~12 minút
+const BACKUP_MAX_COUNT = 20; // koľko posledných záloh sa uchováva
+let lastBackupAt = 0;
+
+async function maybeCreateAutoBackup(){
+  if(!currentUser || viewingUid) return; // žiadne zálohy v admin read-only režime
+  const now = Date.now();
+  if(now - lastBackupAt < BACKUP_THROTTLE_MS) return;
+  lastBackupAt = now;
+  try{
+    await db.collection('userData').doc(currentUser.uid).collection('backups').add({
+      state: JSON.stringify(state),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    pruneOldBackups();
+  }catch(e){
+    console.error('Automatická záloha zlyhala', e);
+  }
+}
+
+async function pruneOldBackups(){
+  if(!currentUser) return;
+  try{
+    const snap = await db.collection('userData').doc(currentUser.uid).collection('backups').orderBy('createdAt','desc').get();
+    if(snap.size > BACKUP_MAX_COUNT){
+      const toDelete = snap.docs.slice(BACKUP_MAX_COUNT);
+      await Promise.all(toDelete.map(d=> d.ref.delete()));
+    }
+  }catch(e){
+    console.error('Čistenie starých záloh zlyhalo', e);
+  }
+}
+
+// ====== DENNÉ ZÁLOHY (nezávislé od priebežných, dlhšia história) ======
+// Cieľ: aj pri intenzívnom používaní appky (viacero automatických záloh za deň,
+// ktoré sa po 20 kusoch mažú) ostane k dispozícii aspoň 1 záloha z každého dňa,
+// a to až 30 dní dozadu. ID dokumentu = dátum (napr. "2026-09-01"), takže pri
+// opakovanom ukladaní v ten istý deň sa dokument len prepíše (nevzniká nový
+// zápis navyše) — pri max. pár používateľoch appky to prakticky nepridáva
+// žiadnu záťaž na free (Spark) plán Firebase, ktorý má denný limit 50-tisíc
+// čítaní a 20-tisíc zápisov/vymazaní.
+const DAILY_BACKUP_MAX_COUNT = 30; // koľko posledných dní sa uchováva
+
+function dailyBackupLocalKey(){
+  return `dailyBackupDate_${currentUser ? currentUser.uid : 'anon'}`;
+}
+
+async function maybeCreateDailyBackup(){
+  if(!currentUser || viewingUid) return; // žiadne zálohy v admin read-only režime
+  const today = todayStr();
+  try{
+    // Lokálne (bez čítania z Firestore) si appka pamätá, či dnešná denná záloha
+    // už bola uložená — vďaka tomu sa zápis do Firestore spustí najviac 1x/deň.
+    if(localStorage.getItem(dailyBackupLocalKey()) === today) return;
+    await db.collection('userData').doc(currentUser.uid).collection('dailyBackups').doc(today).set({
+      state: JSON.stringify(state),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      dateStr: today
+    });
+    localStorage.setItem(dailyBackupLocalKey(), today);
+    pruneOldDailyBackups();
+  }catch(e){
+    console.error('Denná záloha zlyhala', e);
+  }
+}
+
+async function pruneOldDailyBackups(){
+  if(!currentUser) return;
+  try{
+    const snap = await db.collection('userData').doc(currentUser.uid).collection('dailyBackups').orderBy('dateStr','desc').get();
+    if(snap.size > DAILY_BACKUP_MAX_COUNT){
+      const toDelete = snap.docs.slice(DAILY_BACKUP_MAX_COUNT);
+      await Promise.all(toDelete.map(d=> d.ref.delete()));
+    }
+  }catch(e){
+    console.error('Čistenie starých denných záloh zlyhalo', e);
+  }
+}
+
+async function loadDailyBackupsList(){
+  const listEl = document.getElementById('backup-daily-list');
+  if(!listEl) return;
+  if(!currentUser){ listEl.textContent = 'Nie si prihlásený.'; return; }
+  if(viewingUid){ listEl.textContent = 'V režime administrátora nie sú zálohy dostupné.'; return; }
+  listEl.textContent = 'Načítavam…';
+  try{
+    const snap = await db.collection('userData').doc(currentUser.uid).collection('dailyBackups').orderBy('dateStr','desc').limit(DAILY_BACKUP_MAX_COUNT).get();
+    if(snap.empty){
+      listEl.innerHTML = `<div class="empty" style="padding:20px 4px;">Zatiaľ žiadne denné zálohy. Prvá sa uloží automaticky počas dnešného používania appky.</div>`;
+      return;
+    }
+    listEl.innerHTML = snap.docs.map(d=>{
+      const data = d.data();
+      const dt = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate().toLocaleString('sk-SK') : (data.dateStr || d.id);
+      return `<div class="backup-auto-row">
+        <span class="ba-date">${dt}</span>
+        <button type="button" class="ba-restore" data-restore-daily-backup="${d.id}">Obnoviť</button>
+      </div>`;
+    }).join('');
+  }catch(e){
+    console.error(e);
+    listEl.textContent = 'Denné zálohy sa nepodarilo načítať.';
+  }
+}
+
+async function loadAutoBackupsList(){
+  const listEl = document.getElementById('backup-auto-list');
+  if(!listEl) return;
+  if(!currentUser){ listEl.textContent = 'Nie si prihlásený.'; return; }
+  if(viewingUid){ listEl.textContent = 'V režime administrátora nie sú zálohy dostupné.'; return; }
+  listEl.textContent = 'Načítavam…';
+  try{
+    const snap = await db.collection('userData').doc(currentUser.uid).collection('backups').orderBy('createdAt','desc').limit(BACKUP_MAX_COUNT).get();
+    if(snap.empty){
+      listEl.innerHTML = `<div class="empty" style="padding:20px 4px;">Zatiaľ žiadne automatické zálohy. Vytvoria sa samé počas používania appky.</div>`;
+      return;
+    }
+    listEl.innerHTML = snap.docs.map(d=>{
+      const data = d.data();
+      const dt = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate().toLocaleString('sk-SK') : 'práve teraz';
+      return `<div class="backup-auto-row">
+        <span class="ba-date">${dt}</span>
+        <button type="button" class="ba-restore" data-restore-backup="${d.id}">Obnoviť</button>
+      </div>`;
+    }).join('');
+  }catch(e){
+    console.error(e);
+    listEl.textContent = 'Zálohy sa nepodarilo načítať.';
+  }
+}
+
+function openBackupSheet(){
+  document.getElementById('backup-overlay').classList.add('visible');
+  document.getElementById('backup-sheet').classList.add('visible');
+  loadAutoBackupsList();
+  loadDailyBackupsList();
+}
+function closeBackupSheet(){
+  document.getElementById('backup-overlay').classList.remove('visible');
+  document.getElementById('backup-sheet').classList.remove('visible');
+}
+document.getElementById('backup-btn').addEventListener('click', openBackupSheet);
+document.getElementById('backup-overlay').addEventListener('click', closeBackupSheet);
+document.getElementById('backup-close').addEventListener('click', closeBackupSheet);
+
+document.getElementById('backup-export-btn').addEventListener('click', ()=>{
+  const dataStr = JSON.stringify(state, null, 2);
+  const blob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  const stamp = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}-${String(now.getMinutes()).padStart(2,'0')}`;
+  a.href = url;
+  a.download = `zaloha-financie-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('backup-import-btn').addEventListener('click', ()=>{
+  if(viewingUid){ alert('V režime administrátora nie je možné obnoviť zálohu.'); return; }
+  document.getElementById('backup-import-input').click();
+});
+document.getElementById('backup-import-input').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    let parsed;
+    try{
+      parsed = JSON.parse(ev.target.result);
+    }catch(err){
+      alert('Súbor sa nepodarilo prečítať. Skontroluj, či ide o platný .json súbor zálohy.');
+      return;
+    }
+    if(!confirm('Naozaj chceš nahradiť aktuálne dáta touto zálohou? Aktuálny stav sa pred tým tiež automaticky zazálohuje.')) return;
+    lastBackupAt = 0; // vynúť okamžitú zálohu pred prepísaním
+    maybeCreateAutoBackup();
+    maybeCreateDailyBackup();
+    state = normalizeState(parsed);
+    scheduleSave();
+    render();
+    closeBackupSheet();
+    alert('Záloha bola úspešne nahraná.');
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+document.getElementById('backup-auto-list').addEventListener('click', async (e)=>{
+  const btn = e.target.closest('[data-restore-backup]');
+  if(!btn) return;
+  if(viewingUid){ return; }
+  if(!confirm('Naozaj chceš obnoviť túto zálohu? Prepíše to aktuálne dáta. Aktuálny stav sa pred tým tiež automaticky zazálohuje.')) return;
+  const backupId = btn.dataset.restoreBackup;
+  btn.disabled = true;
+  btn.textContent = 'Obnovujem…';
+  try{
+    const docSnap = await db.collection('userData').doc(currentUser.uid).collection('backups').doc(backupId).get();
+    if(!docSnap.exists){ alert('Táto záloha už neexistuje.'); return; }
+    lastBackupAt = 0;
+    await maybeCreateAutoBackup();
+    await maybeCreateDailyBackup();
+    state = normalizeState(JSON.parse(docSnap.data().state));
+    scheduleSave();
+    render();
+    closeBackupSheet();
+    alert('Záloha bola obnovená.');
+  }catch(err){
+    console.error(err);
+    alert('Obnovenie zálohy zlyhalo.');
+  }
+});
+
+document.getElementById('backup-daily-list').addEventListener('click', async (e)=>{
+  const btn = e.target.closest('[data-restore-daily-backup]');
+  if(!btn) return;
+  if(viewingUid){ return; }
+  if(!confirm('Naozaj chceš obnoviť túto dennú zálohu? Prepíše to aktuálne dáta. Aktuálny stav sa pred tým tiež automaticky zazálohuje.')) return;
+  const backupId = btn.dataset.restoreDailyBackup;
+  btn.disabled = true;
+  btn.textContent = 'Obnovujem…';
+  try{
+    const docSnap = await db.collection('userData').doc(currentUser.uid).collection('dailyBackups').doc(backupId).get();
+    if(!docSnap.exists){ alert('Táto záloha už neexistuje.'); return; }
+    lastBackupAt = 0;
+    await maybeCreateAutoBackup();
+    await maybeCreateDailyBackup();
+    state = normalizeState(JSON.parse(docSnap.data().state));
+    scheduleSave();
+    render();
+    closeBackupSheet();
+    alert('Záloha bola obnovená.');
+  }catch(err){
+    console.error(err);
+    alert('Obnovenie zálohy zlyhalo.');
+  }
+});
 
 // ====== ADMIN REŽIM ======
 function setAdminUiLock(locked){
@@ -2177,6 +2694,13 @@ function renderJobCard(job){
   const paidOut = jobPaymentTotal(job, true);
   const workersSettled = job.payments.length > 0 && paidOut >= allocated && allocated > 0;
 
+  const today = todayStr();
+  const tomorrow = tomorrowStr();
+  let dateClass = '';
+  if(job.date === today) dateClass = 'is-today-job';
+  else if(job.date === tomorrow) dateClass = 'is-tomorrow-job';
+  else if(job.date && job.date < today) dateClass = 'is-past-job';
+
   let badges = '';
   badges += job.clientPaid
     ? `<span class="badge green">Klient zaplatil</span>`
@@ -2206,7 +2730,7 @@ function renderJobCard(job){
       <div class="job-swipe-bg ${job.archived ? 'is-delete' : 'is-archive'}">
         <span>${swipeLabel}</span>
       </div>
-    <div class="job ${isOpen ? 'expanded' : ''} ${job.hidden ? 'is-hidden' : ''} ${job.archived ? 'is-archived' : ''}" data-job="${job.id}">
+    <div class="job ${isOpen ? 'expanded' : ''} ${job.hidden ? 'is-hidden' : ''} ${job.archived ? 'is-archived' : ''} ${dateClass}" data-job="${job.id}">
       <div class="job-row" data-toggle="${job.id}">
         <label class="select-check">
           <input type="checkbox" data-select-job="${job.id}" ${selectedJobs.has(job.id) ? 'checked':''}>
@@ -2235,7 +2759,7 @@ function renderJobCard(job){
             <input type="number" id="edit-price-${job.id}" value="${job.price || 0}" step="0.01" data-edit-price="${job.id}">
           </div>
           <div class="field duration">
-            <label for="edit-duration-${job.id}">Trvanie (nepovinné)</label>
+            <label for="edit-duration-${job.id}">Čas</label>
             <input type="text" id="edit-duration-${job.id}" value="${(job.duration||'').replace(/"/g,'&quot;')}" placeholder="napr. 2,5 h" data-edit-duration="${job.id}">
           </div>
         </div>
@@ -2301,6 +2825,96 @@ function getAllWorkerNames(){
   return [...set].sort();
 }
 
+function getAllClientNames(){
+  const set = new Set();
+  state.jobs.forEach(j=>{ if(j.client && j.client.trim()) set.add(j.client.trim()); });
+  return [...set].sort((a,b)=> a.localeCompare(b, 'sk'));
+}
+
+// Vráti poslednú cenu, ktorú appka zaznamenala pre daného klienta (podľa dátumu
+// najnovšej zákazky, presné zhoda mena bez ohľadu na veľké/malé písmená a medzery),
+// alebo null, ak pre neho ešte žiadna zákazka neexistuje.
+function getLastPriceForClient(name){
+  const n = (name || '').trim().toLowerCase();
+  if(!n) return null;
+  const matches = state.jobs
+    .filter(j => (j.client || '').trim().toLowerCase() === n)
+    .sort((a,b)=> (b.date || '').localeCompare(a.date || ''));
+  return matches.length ? (Number(matches[0].price) || 0) : null;
+}
+
+function renderKnownClientsDatalist(){
+  const dl = document.getElementById('known-clients');
+  if(!dl) return;
+  dl.innerHTML = getAllClientNames().map(n=>`<option value="${n.replace(/"/g,'&quot;')}"></option>`).join('');
+}
+
+// Keď klient v poli zodpovedá niekomu, komu sme už predtým fakturovali, appka
+// predvyplní cenové pole jeho poslednou cenou (len ak je pole ešte prázdne)
+// a pod poľom zobrazí drobnú poznámku, že ide o návrh - dá sa kedykoľvek prepísať.
+function applyPriceSuggestion(clientInputEl, priceInputEl, hintEl){
+  if(!clientInputEl || !priceInputEl || !hintEl) return;
+  const suggestion = getLastPriceForClient(clientInputEl.value);
+  if(suggestion === null){
+    hintEl.style.display = 'none';
+    hintEl.textContent = '';
+    return;
+  }
+  if(!priceInputEl.value){
+    priceInputEl.value = suggestion;
+  }
+  hintEl.style.display = '';
+  hintEl.textContent = `Návrh podľa histórie: ${fmt(suggestion)} (dá sa upraviť)`;
+}
+
+// ====== PANEL "DNES / ZAJTRA" (skryteľný) ======
+const DTP_VISIBLE_KEY = 'dtpPanelVisible';
+
+function tomorrowStr(){
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function renderDtpGroup(label, jobs){
+  if(!jobs.length){
+    return `<div class="dtp-group"><div class="dtp-group-label">${label}</div><div class="dtp-empty">Žiadne zákazky</div></div>`;
+  }
+  const rows = jobs.map(j=>`<div class="dtp-row">
+    <span class="dtp-client">${(j.client || '(bez mena)')}</span>
+    ${j.duration ? `<span class="dtp-duration">${j.duration}</span>` : ''}
+    <span class="dtp-price">${fmt(j.price)}</span>
+  </div>`).join('');
+  return `<div class="dtp-group"><div class="dtp-group-label">${label} · ${jobs.length}</div>${rows}</div>`;
+}
+
+function renderDtpPanel(){
+  const panel = document.getElementById('dtp-panel');
+  if(!panel) return;
+  const t = todayStr();
+  const tmr = tomorrowStr();
+  const todayJobs = activeJobs().filter(j=> j.date === t);
+  const tmrJobs = activeJobs().filter(j=> j.date === tmr);
+  panel.innerHTML = renderDtpGroup('Dnes', todayJobs) + renderDtpGroup('Zajtra', tmrJobs);
+}
+
+function setDtpVisible(visible){
+  const panel = document.getElementById('dtp-panel');
+  const btn = document.getElementById('dtp-toggle-btn');
+  if(!panel || !btn) return;
+  panel.style.display = visible ? '' : 'none';
+  btn.classList.toggle('active', visible);
+  localStorage.setItem(DTP_VISIBLE_KEY, visible ? '1' : '0');
+  if(visible) renderDtpPanel();
+}
+
+document.getElementById('dtp-toggle-btn').addEventListener('click', ()=>{
+  const isVisible = document.getElementById('dtp-panel').style.display !== 'none';
+  setDtpVisible(!isVisible);
+});
+// Predvolene skrytý, kým si ho niekto sám neotvorí - potom si appka zapamätá jeho voľbu.
+setDtpVisible(localStorage.getItem(DTP_VISIBLE_KEY) === '1');
+
 function getFilteredJobs(){
   return state.jobs.filter(job=>{
     if(job.archived && !filters.showArchived) return false;
@@ -2338,26 +2952,25 @@ function renderMiniCalendar(){
     dayMap[j.date].sum += Number(j.price)||0;
     if(!j.clientPaid) dayMap[j.date].unpaid = true;
   });
-  const maxCount = Math.max(1, ...Object.values(dayMap).map(v=>v.count));
 
   const weekdayHeaders = WEEKDAYS_SK.map(w=>`<span>${w.short}</span>`).join('');
+  const maxCount = Math.max(1, ...Object.values(dayMap).map(v=>v.count));
 
   let cells = '';
   for(let i=0;i<offset;i++){ cells += `<div class="mini-cal-day empty"></div>`; }
   for(let d=1; d<=daysInMonth; d++){
     const dateStr = `${filters.month}-${String(d).padStart(2,'0')}`;
     const info = dayMap[dateStr];
-    let tierClass = '';
-    if(info){
-      const ratio = info.count / maxCount;
-      tierClass = ratio > 0.66 ? 'tier-3' : (ratio > 0.33 ? 'tier-2' : 'tier-1');
-    }
     const classes = ['mini-cal-day'];
-    if(info) classes.push('has-jobs', tierClass);
+    if(info){
+      classes.push('has-jobs');
+      classes.push(info.unpaid ? 'has-unpaid' : 'all-paid');
+    }
     if(dateStr === today) classes.push('is-today');
-    if(info && info.unpaid) classes.push('has-unpaid');
-    const title = info ? `${dayHeaderLabel(dateStr)} · ${info.count} ${info.count===1?'zákazka':(info.count>=2&&info.count<=4?'zákazky':'zákaziek')} · ${fmt(info.sum)}` : `${dayHeaderLabel(dateStr)} · voľný deň`;
-    cells += `<div class="${classes.join(' ')}" data-cal-date="${dateStr}" title="${title}">${d}</div>`;
+    const title = info ? `${dayHeaderLabel(dateStr)} · ${info.count} ${info.count===1?'zákazka':(info.count>=2&&info.count<=4?'zákazky':'zákaziek')} · ${fmt(info.sum)} · ${info.unpaid ? 'niečo nezaplatené' : 'všetko zaplatené'}` : `${dayHeaderLabel(dateStr)} · voľný deň`;
+    const countBadge = info ? `<span class="cal-count">${info.count}</span>` : '';
+    const loadBar = info ? `<span class="cal-load-bar" style="width:${Math.round((info.count/maxCount)*100)}%; opacity:${0.35 + 0.65*(info.count/maxCount)}"></span>` : '';
+    cells += `<div class="${classes.join(' ')}" data-cal-date="${dateStr}" title="${title}">${d}${countBadge}${loadBar}</div>`;
   }
 
   return `
@@ -2365,9 +2978,9 @@ function renderMiniCalendar(){
       <div class="mini-cal-weekdays">${weekdayHeaders}</div>
       <div class="mini-cal-grid">${cells}</div>
       <div class="mini-cal-legend">
-        <span><i class="swatch" style="background:var(--surface-2);border:1px solid var(--border)"></i>voľné</span>
-        <span><i class="swatch" style="background:var(--blue-dim)"></i>nabité</span>
-        <span><i class="swatch" style="background:var(--blue)"></i>plné</span>
+        <span><i class="swatch" style="background:var(--green)"></i>zaplatené</span>
+        <span><i class="swatch" style="background:var(--amber)"></i>nezaplatené</span>
+        <span>pružok dole = vyťaženie dňa · číslo = počet zákaziek</span>
       </div>
     </div>
   `;
@@ -2391,14 +3004,17 @@ function renderFilterBar(){
     `;
   }
 
+  const calAnimClass = calDirection === 1 ? 'dir-next' : calDirection === -1 ? 'dir-prev' : '';
+  calDirection = 0;
+
   bar.innerHTML = `
     <div class="month-nav">
-      <button class="btn ghost small" id="month-prev">◀</button>
+      <button class="btn ghost small" id="month-prev" aria-label="Predchádzajúci mesiac">◀</button>
       <span class="month-nav-label">${filters.showAllMonths ? 'Všetky mesiace' : monthLabel(filters.month)}</span>
-      <button class="btn ghost small" id="month-next">▶</button>
+      <button class="btn ghost small" id="month-next" aria-label="Nasledujúci mesiac">▶</button>
       <button class="btn ghost small" id="month-toggle-all">${filters.showAllMonths ? 'Len tento mesiac' : 'Zobraziť všetky'}</button>
     </div>
-    ${renderMiniCalendar()}
+    <div class="mini-cal-anim ${calAnimClass}">${renderMiniCalendar()}</div>
     <div class="filter-controls">
       <input type="text" id="filter-search" placeholder="Hľadať klienta / poznámku…" value="${filters.search.replace(/"/g,'&quot;')}">
       <select id="filter-worker">
@@ -2482,13 +3098,16 @@ function renderJobsList(){
 }
 
 function renderJobs(){
+  renderKnownClientsDatalist();
+  if(document.getElementById('dtp-panel').style.display !== 'none') renderDtpPanel();
   renderFilterBar();
   renderJobsList();
 }
 
 function renderWorkers(){
+  const jobsForTotals = filters.showAllMonths ? activeJobs() : activeJobs().filter(j=> monthKey(j.date) === filters.month);
   const totals = {};
-  activeJobs().forEach(job => {
+  jobsForTotals.forEach(job => {
     job.payments.forEach(p => {
       const name = (p.name || '(bez mena)').trim() || '(bez mena)';
       if(!totals[name]) totals[name] = { paid: 0, owed: 0 };
@@ -2499,6 +3118,14 @@ function renderWorkers(){
   });
   const names = Object.keys(totals).sort();
   const el = document.getElementById('view-workers');
+  const monthNavHtml = `
+    <div class="month-nav">
+      <button type="button" class="btn ghost small" data-workers-prev>◀</button>
+      <span class="month-nav-label">${filters.showAllMonths ? 'Všetky mesiace' : monthLabel(filters.month)}</span>
+      <button type="button" class="btn ghost small" data-workers-next>▶</button>
+      <button type="button" class="btn ghost small" data-workers-toggle>${filters.showAllMonths ? 'Len tento mesiac' : 'Zobraziť všetky'}</button>
+    </div>
+  `;
   const rateBlock = `
     <div class="rate-row">
       <span>Bežná sadzba</span>
@@ -2507,10 +3134,10 @@ function renderWorkers(){
     </div>
   `;
   if(names.length === 0){
-    el.innerHTML = rateBlock + `<div class="empty">Zatiaľ žiadni brigádnici. Pridaj platby v zákazke.</div>`;
+    el.innerHTML = monthNavHtml + rateBlock + `<div class="empty">Žiadni brigádnici v tomto období.</div>`;
     return;
   }
-  el.innerHTML = rateBlock + names.map(name => `
+  el.innerHTML = monthNavHtml + rateBlock + names.map(name => `
     <div class="worker-card">
       <div class="name">${name}</div>
       <div class="figures">
@@ -2524,6 +3151,18 @@ function renderWorkers(){
 let financeAccountFilter = 'hotovost';
 let selectedFinance = new Set();
 let financePeriod = { mode: 'all', from: '', to: '' };
+let financeMonth = new Date().toISOString().slice(0,7);
+function monthKeyShift(key, delta){
+  const [y,m] = key.split('-').map(Number);
+  const d = new Date(y, m-1+delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function monthBoundsOf(key){
+  const [y,m] = key.split('-').map(Number);
+  const from = `${key}-01`;
+  const to = `${key}-${pad2(new Date(y, m, 0).getDate())}`;
+  return { from, to };
+}
 
 function financeCategories(type){
   return DEFAULT_FINANCE_CATEGORIES[type].concat(state.finance.customCategories[type] || []);
@@ -2969,6 +3608,15 @@ function renderFinance(){
   const recurringToggleBtn = `<button class="btn ghost small" id="fin-recurring-toggle">🔁 ${financeRecurringOpen ? 'Skryť opakované platby' : 'Opakujúce sa platby'}</button>`;
   const recurringPanel = financeRecurringOpen ? renderFinanceRecurring() : '';
 
+  const monthNavHtml = `
+    <div class="month-nav">
+      <button type="button" class="btn ghost small" data-fin-mnav-prev>◀</button>
+      <span class="month-nav-label">${financePeriod.mode==='all' ? 'Všetky mesiace' : monthLabel(financeMonth)}</span>
+      <button type="button" class="btn ghost small" data-fin-mnav-next>▶</button>
+      <button type="button" class="btn ghost small" data-fin-mnav-toggle>${financePeriod.mode==='all' ? 'Len tento mesiac' : 'Zobraziť všetky'}</button>
+    </div>
+  `;
+
   el.innerHTML = `
     <div class="finance-tabs" style="flex-wrap:wrap;">
       ${FINANCE_ACCOUNTS.map(a=>`<button data-fin-account="${a.id}" class="${financeAccountFilter===a.id?'active':''}">${a.label}</button>`).join('')}
@@ -2978,6 +3626,7 @@ function renderFinance(){
     ${addForm}
     <div style="margin-bottom:16px;">${recurringToggleBtn}</div>
     ${recurringPanel}
+    ${monthNavHtml}
     ${renderPeriodBar()}
     ${summary}
     ${breakdown}
@@ -3166,6 +3815,31 @@ function renderFinance(){
     });
   });
 
+  const finMnavPrev = el.querySelector('[data-fin-mnav-prev]');
+  if(finMnavPrev) finMnavPrev.addEventListener('click', ()=>{
+    financeMonth = monthKeyShift(financeMonth, -1);
+    const b = monthBoundsOf(financeMonth);
+    financePeriod = { mode: 'custom', from: b.from, to: b.to };
+    renderFinance();
+  });
+  const finMnavNext = el.querySelector('[data-fin-mnav-next]');
+  if(finMnavNext) finMnavNext.addEventListener('click', ()=>{
+    financeMonth = monthKeyShift(financeMonth, 1);
+    const b = monthBoundsOf(financeMonth);
+    financePeriod = { mode: 'custom', from: b.from, to: b.to };
+    renderFinance();
+  });
+  const finMnavToggle = el.querySelector('[data-fin-mnav-toggle]');
+  if(finMnavToggle) finMnavToggle.addEventListener('click', ()=>{
+    if(financePeriod.mode === 'all'){
+      const b = monthBoundsOf(financeMonth);
+      financePeriod = { mode: 'custom', from: b.from, to: b.to };
+    } else {
+      financePeriod = { mode: 'all', from: '', to: '' };
+    }
+    renderFinance();
+  });
+
   document.getElementById('fin-period-mode').addEventListener('change', (e)=>{
     financePeriod.mode = e.target.value;
     if(financePeriod.mode !== 'custom'){ financePeriod.from = ''; financePeriod.to = ''; }
@@ -3289,9 +3963,18 @@ function renderMonthly(){
     byYear[yKey].paidOut += paid;
   });
   const chartHtml = renderMonthlyChartSVG(byMonth);
-  const keys = Object.keys(byMonth).sort((a,b)=> b.localeCompare(a));
+  const monthNavHtml = `
+    <div class="month-nav">
+      <button type="button" class="btn ghost small" data-monthly-prev>◀</button>
+      <span class="month-nav-label">${filters.showAllMonths ? 'Všetky mesiace' : monthLabel(filters.month)}</span>
+      <button type="button" class="btn ghost small" data-monthly-next>▶</button>
+      <button type="button" class="btn ghost small" data-monthly-toggle>${filters.showAllMonths ? 'Len tento mesiac' : 'Zobraziť všetky'}</button>
+    </div>
+  `;
+  const allKeys = Object.keys(byMonth).sort((a,b)=> b.localeCompare(a));
+  const keys = filters.showAllMonths ? allKeys : allKeys.filter(k=> k === filters.month);
   let lastYear = null;
-  const monthsHtml = keys.map(key=>{
+  const monthsHtml = keys.length === 0 ? `<div class="empty">Žiadne zákazky v mesiaci ${monthLabel(filters.month)}.</div>` : keys.map(key=>{
     const m = byMonth[key];
     const net = m.earned - m.paidOut;
     const yKey = key === '—' ? '—' : key.slice(0,4);
@@ -3347,7 +4030,7 @@ function renderMonthly(){
     </div>
     `;
   }).join('');
-  el.innerHTML = chartHtml + monthsHtml;
+  el.innerHTML = monthNavHtml + chartHtml + monthsHtml;
 }
 
 function todayStr(){ return new Date().toISOString().slice(0,10); }
@@ -3543,6 +4226,18 @@ document.getElementById('view-workers').addEventListener('change', (e)=>{
   }
 });
 
+document.getElementById('view-monthly').addEventListener('click', (e)=>{
+  if(e.target.closest('[data-monthly-prev]')){ shiftMonth(-1); render(); return; }
+  if(e.target.closest('[data-monthly-next]')){ shiftMonth(1); render(); return; }
+  if(e.target.closest('[data-monthly-toggle]')){ filters.showAllMonths = !filters.showAllMonths; render(); return; }
+});
+
+document.getElementById('view-workers').addEventListener('click', (e)=>{
+  if(e.target.closest('[data-workers-prev]')){ shiftMonth(-1); render(); return; }
+  if(e.target.closest('[data-workers-next]')){ shiftMonth(1); render(); return; }
+  if(e.target.closest('[data-workers-toggle]')){ filters.showAllMonths = !filters.showAllMonths; render(); return; }
+});
+
 /* ===== Undo toast helpers (namiesto confirm()) ===== */
 let _undoTimer = null;
 let _undoAction = null;
@@ -3605,6 +4300,14 @@ function triggerPermanentDelete(jobId){
   });
 }
 
+document.getElementById('new-client').addEventListener('input', ()=>{
+  applyPriceSuggestion(
+    document.getElementById('new-client'),
+    document.getElementById('new-price'),
+    document.getElementById('new-price-hint')
+  );
+});
+
 document.getElementById('add-job-btn').addEventListener('click', ()=>{
   const date = document.getElementById('new-date').value || new Date().toISOString().slice(0,10);
   const client = document.getElementById('new-client').value.trim();
@@ -3618,6 +4321,7 @@ document.getElementById('add-job-btn').addEventListener('click', ()=>{
   document.getElementById('new-price').value = '';
   document.getElementById('new-note').value = '';
   document.getElementById('new-duration').value = '';
+  document.getElementById('new-price-hint').style.display = 'none';
   expanded[jobId] = true;
   scheduleSave();
   render();
@@ -3728,6 +4432,8 @@ document.getElementById('jobs-list').addEventListener('click', (e)=>{
 
   const bulkMarkPaid = e.target.closest('#bulk-mark-paid');
   if(bulkMarkPaid){
+    const r = bulkMarkPaid.getBoundingClientRect();
+    playMoneyBurst(r.left + r.width/2, r.top + r.height/2);
     state.jobs.forEach(j=>{ if(selectedJobs.has(j.id)){ j.clientPaid = true; syncJobToFinance(j); } });
     scheduleSave();
     render();
@@ -3830,6 +4536,10 @@ document.getElementById('jobs-list').addEventListener('change', (e)=>{
     const jobId = clientPaidToggle.dataset.clientPaid;
     const job = state.jobs.find(j=>j.id===jobId);
     job.clientPaid = clientPaidToggle.checked;
+    if(job.clientPaid){
+      const r = clientPaidToggle.getBoundingClientRect();
+      playMoneyBurst(r.left + r.width/2, r.top + r.height/2);
+    }
     syncJobToFinance(job);
     scheduleSave();
     render();
@@ -3851,9 +4561,9 @@ document.getElementById('jobs-list').addEventListener('change', (e)=>{
 });
 
 document.getElementById('filter-bar').addEventListener('click', (e)=>{
-  if(e.target.closest('#month-prev')){ shiftMonth(-1); render(); return; }
-  if(e.target.closest('#month-next')){ shiftMonth(1); render(); return; }
-  if(e.target.closest('#month-toggle-all')){ filters.showAllMonths = !filters.showAllMonths; render(); return; }
+  if(e.target.closest('#month-prev')){ calDirection = -1; shiftMonth(-1); render(); return; }
+  if(e.target.closest('#month-next')){ calDirection = 1; shiftMonth(1); render(); return; }
+  if(e.target.closest('#month-toggle-all')){ calDirection = 0; filters.showAllMonths = !filters.showAllMonths; render(); return; }
   const filterChip = e.target.closest('[data-filter-toggle]');
   if(filterChip){
     const key = filterChip.dataset.filterToggle;
@@ -4102,6 +4812,14 @@ document.getElementById('view-recurring').addEventListener('change', (e)=>{
   overlay.addEventListener('click', closeQuickAdd);
   document.getElementById('quick-add-close').addEventListener('click', closeQuickAdd);
 
+  document.getElementById('qa-client').addEventListener('input', ()=>{
+    applyPriceSuggestion(
+      document.getElementById('qa-client'),
+      document.getElementById('qa-price'),
+      document.getElementById('qa-price-hint')
+    );
+  });
+
   document.getElementById('qa-submit').addEventListener('click', ()=>{
     const date = document.getElementById('qa-date').value || todayStr();
     const client = document.getElementById('qa-client').value.trim();
@@ -4116,6 +4834,7 @@ document.getElementById('view-recurring').addEventListener('change', (e)=>{
     document.getElementById('qa-client').value = '';
     document.getElementById('qa-price').value = '';
     document.getElementById('qa-note').value = '';
+    document.getElementById('qa-price-hint').style.display = 'none';
     closeQuickAdd();
   });
 })();
