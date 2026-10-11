@@ -3148,6 +3148,7 @@ function renderWorkers(){
   `).join('');
 }
 
+const FINANCE_ALL_ACCOUNTS = 'vsetko';
 let financeAccountFilter = 'hotovost';
 let selectedFinance = new Set();
 let financePeriod = { mode: 'all', from: '', to: '' };
@@ -3451,7 +3452,10 @@ function renderFinanceBulkBar(){
 
 function renderFinance(){
   const el = document.getElementById('view-finance');
-  const allAccountEntries = state.finance.entries.filter(e => e.account === financeAccountFilter);
+  const isAllAccounts = financeAccountFilter === FINANCE_ALL_ACCOUNTS;
+  const allAccountEntries = isAllAccounts
+    ? state.finance.entries.slice()
+    : state.finance.entries.filter(e => e.account === financeAccountFilter);
 
   // drop selections that no longer exist or belong to the other account
   const existingIds = new Set(allAccountEntries.map(e=>e.id));
@@ -3505,6 +3509,22 @@ function renderFinance(){
     </div>
   `;
 
+  const accountBalances = !isAllAccounts ? '' : `
+    <div class="finance-cat-breakdown">
+      <h3 style="margin-bottom:8px;">Zostatok podľa účtov</h3>
+      ${FINANCE_ACCOUNTS.map(a=>{
+        const accNet = entries.filter(e=>e.account===a.id)
+          .reduce((s,e)=> s + (e.type==='income' ? 1 : -1) * Number(e.amount||0), 0);
+        return `
+          <div class="finance-cat-row" style="cursor:default;">
+            <span class="fcr-left">${a.label}</span>
+            <span style="color:${accNet>=0?'var(--green)':'var(--red)'}">${fmt(accNet)}</span>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+
   const sorted = entries.slice().sort((a,b)=> b.date.localeCompare(a.date));
   const list = sorted.length === 0
     ? `<div class="empty">Žiadne záznamy pre zvolené obdobie.</div>`
@@ -3549,7 +3569,7 @@ function renderFinance(){
         </label>
         <div class="fe-left">
           <span class="fe-cat">${catDot(e.category)}${e.category}${e.note ? ' · ' + e.note : ''}</span>
-          <span class="fe-meta">${e.date}</span>
+          <span class="fe-meta">${e.date}${isAllAccounts ? ' · ' + accountLabel(e.account) : ''}</span>
         </div>
         <div style="display:flex; align-items:center; gap:10px;">
           <span class="fe-amt ${e.type}">${fmtSigned(Number(e.amount||0), e.type)}</span>
@@ -3619,16 +3639,18 @@ function renderFinance(){
 
   el.innerHTML = `
     <div class="finance-tabs" style="flex-wrap:wrap;">
+      <button data-fin-account="${FINANCE_ALL_ACCOUNTS}" class="${isAllAccounts?'active':''}">Všetko</button>
       ${FINANCE_ACCOUNTS.map(a=>`<button data-fin-account="${a.id}" class="${financeAccountFilter===a.id?'active':''}">${a.label}</button>`).join('')}
     </div>
     ${renderCompareBlock(allAccountEntries)}
     ${autoTransferToggle}
-    ${addForm}
-    <div style="margin-bottom:16px;">${recurringToggleBtn}</div>
-    ${recurringPanel}
+    ${isAllAccounts ? '' : addForm}
+    ${isAllAccounts ? '' : `<div style="margin-bottom:16px;">${recurringToggleBtn}</div>`}
+    ${isAllAccounts ? '' : recurringPanel}
     ${monthNavHtml}
     ${renderPeriodBar()}
     ${summary}
+    ${accountBalances}
     ${breakdown}
     ${renderFinanceBulkBar()}
     ${list}
@@ -3696,12 +3718,13 @@ function renderFinance(){
     }
   }
 
-  document.getElementById('fin-recurring-toggle').addEventListener('click', ()=>{
+  const recurringToggleEl = document.getElementById('fin-recurring-toggle');
+  if(recurringToggleEl) recurringToggleEl.addEventListener('click', ()=>{
     financeRecurringOpen = !financeRecurringOpen;
     renderFinance();
   });
 
-  if(financeRecurringOpen){
+  if(financeRecurringOpen && !isAllAccounts){
     const fintplType = document.getElementById('fintpl-type');
     const fintplCategory = document.getElementById('fintpl-category');
     fintplType.addEventListener('change', (e)=>{
@@ -3763,6 +3786,7 @@ function renderFinance(){
     });
   }
 
+  if(!isAllAccounts){
   document.getElementById('fin-type').addEventListener('change', (e)=>{
     document.getElementById('fin-category').innerHTML = catOptions(e.target.value);
   });
@@ -3799,6 +3823,7 @@ function renderFinance(){
     scheduleSave();
     renderFinance();
   });
+  }
   el.querySelectorAll('[data-fin-del]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       unlinkFinanceEntryFromJob(btn.dataset.finDel);
