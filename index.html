@@ -1880,6 +1880,25 @@ body.admin-readonly .fab-add{ display: none; }
   flex-shrink: 0;
 }
 .backup-auto-row .ba-restore:hover{ opacity: 0.85; }
+.backup-auto-row .ba-actions{ display:flex; gap:6px; flex-shrink:0; }
+.backup-auto-row .ba-merge{
+  border-color: var(--green);
+  background: transparent;
+  color: var(--green);
+}
+.finance-summary .card .fs-opening{
+  display:block;
+  margin-top:6px;
+  font-family:'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--text-soft);
+  background:none;
+  border:none;
+  padding:0;
+  cursor:pointer;
+  text-align:left;
+}
+.finance-summary .card .fs-opening:hover{ color: var(--text); }
 .backup-hint{
   font-family: 'Inter', sans-serif;
   font-size: 12px;
@@ -2037,6 +2056,7 @@ body.admin-readonly .fab-add{ display: none; }
     <input type="file" id="backup-import-input" accept="application/json,.json" style="display:none;">
     <div class="section-label" style="margin-top:18px;">Automatické zálohy (posledných 20)</div>
     <div class="backup-hint">Appka si sama priebežne ukladá zálohy počas používania (max. 1x za cca 12 minút).</div>
+    <div class="backup-hint"><b>Doplniť</b> pridá zo zálohy len záznamy, ktoré teraz chýbajú, a nič nezmaže. <b>Obnoviť</b> nahradí všetky aktuálne dáta stavom zo zálohy.</div>
     <div id="backup-auto-list">Načítavam…</div>
     <div class="section-label" style="margin-top:18px;">Denné zálohy (posledných 30 dní)</div>
     <div class="backup-hint">Navyše sa raz denne uloží samostatná záloha, ktorá sa neprepisuje priebežnými zálohami — takže sa dá vrátiť aj o pár dní/týždňov späť, nielen o pár hodín.</div>
@@ -2167,7 +2187,7 @@ function accountLabel(id){
   const a = FINANCE_ACCOUNTS.find(a=>a.id===id);
   return a ? a.label : id;
 }
-let state = { jobs: [], settings: { rate: 10, autoTransferJobsToFinance: false }, templates: [], finance: { entries: [], recurringTemplates: [], customCategories: { income: [], expense: [] } } };
+let state = { jobs: [], settings: { rate: 10, autoTransferJobsToFinance: false }, templates: [], finance: { entries: [], recurringTemplates: [], customCategories: { income: [], expense: [] }, openingBalances: {} } };
 let expanded = {};
 let expandedTpl = {};
 let selectedJobs = new Set();
@@ -2259,6 +2279,7 @@ function normalizeState(parsed){
   if(!s.finance.entries) s.finance.entries = [];
   if(!s.finance.recurringTemplates) s.finance.recurringTemplates = [];
   if(!s.finance.customCategories) s.finance.customCategories = { income: [], expense: [] };
+  if(!s.finance.openingBalances) s.finance.openingBalances = {};
   if(!s.finance.customCategories.income) s.finance.customCategories.income = [];
   if(!s.finance.customCategories.expense) s.finance.customCategories.expense = [];
   s.finance.entries.forEach(e=>{ if(!e.account) e.account = 'tatra_osobny'; if(e.account==='osobny') e.account='tatra_osobny'; if(e.account==='firemny') e.account='tatra_sro'; if(e.jobId === undefined) e.jobId = null; });
@@ -2423,7 +2444,10 @@ async function loadDailyBackupsList(){
       const dt = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate().toLocaleString('sk-SK') : (data.dateStr || d.id);
       return `<div class="backup-auto-row">
         <span class="ba-date">${dt}</span>
-        <button type="button" class="ba-restore" data-restore-daily-backup="${d.id}">Obnoviť</button>
+        <span class="ba-actions">
+          <button type="button" class="ba-restore ba-merge" data-merge-daily-backup="${d.id}">Doplniť</button>
+          <button type="button" class="ba-restore" data-restore-daily-backup="${d.id}">Obnoviť</button>
+        </span>
       </div>`;
     }).join('');
   }catch(e){
@@ -2449,7 +2473,10 @@ async function loadAutoBackupsList(){
       const dt = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate().toLocaleString('sk-SK') : 'práve teraz';
       return `<div class="backup-auto-row">
         <span class="ba-date">${dt}</span>
-        <button type="button" class="ba-restore" data-restore-backup="${d.id}">Obnoviť</button>
+        <span class="ba-actions">
+          <button type="button" class="ba-restore ba-merge" data-merge-backup="${d.id}">Doplniť</button>
+          <button type="button" class="ba-restore" data-restore-backup="${d.id}">Obnoviť</button>
+        </span>
       </div>`;
     }).join('');
   }catch(e){
@@ -2565,6 +2592,89 @@ document.getElementById('backup-daily-list').addEventListener('click', async (e)
     console.error(err);
     alert('Obnovenie zálohy zlyhalo.');
   }
+});
+
+// ====== DOPLNENIE ZO ZÁLOHY (nič nemaže, len pridá chýbajúce záznamy) ======
+function mergeMissingFromBackup(backupState){
+  const b = normalizeState(backupState);
+  const addMissing = (current, fromBackup) => {
+    const have = new Set(current.map(x=>x.id));
+    const missing = fromBackup.filter(x=>x && x.id && !have.has(x.id));
+    current.push(...missing);
+    return missing.length;
+  };
+  const counts = {
+    entries: addMissing(state.finance.entries, b.finance.entries),
+    jobs: addMissing(state.jobs, b.jobs),
+    recurring: addMissing(state.finance.recurringTemplates, b.finance.recurringTemplates),
+    templates: addMissing(state.templates, b.templates || [])
+  };
+  ['income','expense'].forEach(type=>{
+    (b.finance.customCategories[type]||[]).forEach(c=>{
+      if(!state.finance.customCategories[type].includes(c)) state.finance.customCategories[type].push(c);
+    });
+  });
+  Object.keys(b.finance.openingBalances||{}).forEach(acc=>{
+    if(state.finance.openingBalances[acc] === undefined) state.finance.openingBalances[acc] = b.finance.openingBalances[acc];
+  });
+  return counts;
+}
+
+function countMissingFromBackup(backupState){
+  const b = normalizeState(backupState);
+  const missing = (current, fromBackup) => {
+    const have = new Set(current.map(x=>x.id));
+    return fromBackup.filter(x=>x && x.id && !have.has(x.id)).length;
+  };
+  return {
+    entries: missing(state.finance.entries, b.finance.entries),
+    jobs: missing(state.jobs, b.jobs),
+    recurring: missing(state.finance.recurringTemplates, b.finance.recurringTemplates),
+    templates: missing(state.templates, b.templates || [])
+  };
+}
+
+async function mergeFromBackupDoc(collectionName, backupId, btn){
+  if(viewingUid) return;
+  btn.disabled = true;
+  const prevText = btn.textContent;
+  btn.textContent = 'Načítavam…';
+  try{
+    const docSnap = await db.collection('userData').doc(currentUser.uid).collection(collectionName).doc(backupId).get();
+    if(!docSnap.exists){ alert('Táto záloha už neexistuje.'); return; }
+    const backupState = JSON.parse(docSnap.data().state);
+    const c = countMissingFromBackup(backupState);
+    const total = c.entries + c.jobs + c.recurring + c.templates;
+    if(total === 0){ alert('V tejto zálohe nie je nič, čo by v aktuálnych dátach chýbalo.'); return; }
+    const parts = [];
+    if(c.entries) parts.push(`${c.entries} záznamov vo financiách`);
+    if(c.jobs) parts.push(`${c.jobs} zákaziek`);
+    if(c.recurring) parts.push(`${c.recurring} opakovaných platieb`);
+    if(c.templates) parts.push(`${c.templates} šablón`);
+    if(!confirm(`Zo zálohy sa doplní: ${parts.join(', ')}.\n\nNič sa nezmaže. Pozor: vrátia sa aj záznamy, ktoré si medzičasom zmazal úmyselne.\n\nPokračovať?`)) return;
+    lastBackupAt = 0; // poistka: uloží aktuálny stav pred doplnením
+    await maybeCreateAutoBackup();
+    mergeMissingFromBackup(backupState);
+    scheduleSave();
+    render();
+    closeBackupSheet();
+    alert(`Doplnené: ${parts.join(', ')}.`);
+  }catch(err){
+    console.error(err);
+    alert('Doplnenie zo zálohy zlyhalo.');
+  }finally{
+    btn.disabled = false;
+    btn.textContent = prevText;
+  }
+}
+
+document.getElementById('backup-auto-list').addEventListener('click', (e)=>{
+  const btn = e.target.closest('[data-merge-backup]');
+  if(btn) mergeFromBackupDoc('backups', btn.dataset.mergeBackup, btn);
+});
+document.getElementById('backup-daily-list').addEventListener('click', (e)=>{
+  const btn = e.target.closest('[data-merge-daily-backup]');
+  if(btn) mergeFromBackupDoc('dailyBackups', btn.dataset.mergeDailyBackup, btn);
 });
 
 // ====== ADMIN REŽIM ======
@@ -3165,6 +3275,16 @@ function monthBoundsOf(key){
   return { from, to };
 }
 
+function openingBalanceOf(accountId){
+  return Number((state.finance.openingBalances||{})[accountId] || 0);
+}
+// Stav účtu = počiatočný zostatok + všetky príjmy − výdavky do dátumu `upTo` (vrátane); bez `upTo` celá história
+function accountStateOf(accountId, upTo){
+  return state.finance.entries
+    .filter(e => e.account === accountId && (!upTo || e.date <= upTo))
+    .reduce((s,e)=> s + (e.type==='income' ? 1 : -1) * Number(e.amount||0), openingBalanceOf(accountId));
+}
+
 function financeCategories(type){
   return DEFAULT_FINANCE_CATEGORIES[type].concat(state.finance.customCategories[type] || []);
 }
@@ -3469,6 +3589,10 @@ function renderFinance(){
   const income = entries.filter(e=>e.type==='income').reduce((s,e)=>s+Number(e.amount||0),0);
   const expense = entries.filter(e=>e.type==='expense').reduce((s,e)=>s+Number(e.amount||0),0);
   const net = income - expense;
+  const stateUpTo = range ? range.to : null;
+  const accountStateNow = isAllAccounts
+    ? FINANCE_ACCOUNTS.reduce((s,a)=> s + accountStateOf(a.id, stateUpTo), 0)
+    : accountStateOf(financeAccountFilter, stateUpTo);
 
   const catOptions = (type) => financeCategories(type).map(c=>`<option value="${c}">${c}</option>`).join('') + `<option value="__new__">+ Pridať kategóriu…</option>`;
 
@@ -3506,15 +3630,17 @@ function renderFinance(){
       <div class="card income"><span class="lbl">Príjmy</span><span class="val">${fmt(income)}</span></div>
       <div class="card expense"><span class="lbl">Výdavky</span><span class="val">${fmt(expense)}</span></div>
       <div class="card"><span class="lbl">Zostatok</span><span class="val" style="color:${net>=0?'var(--green)':'var(--red)'}">${fmt(net)}</span></div>
+      <div class="card"><span class="lbl">${isAllAccounts ? 'Stav účtov spolu' : 'Stav účtu'}${range ? ' k ' + fmtDate(range.to) : ''}</span><span class="val" style="color:${accountStateNow>=0?'var(--green)':'var(--red)'}">${fmt(accountStateNow)}</span>
+        ${isAllAccounts ? '' : `<button type="button" class="fs-opening" id="fin-opening-edit">počiatočný zostatok: ${fmt(openingBalanceOf(financeAccountFilter))} ✎</button>`}
+      </div>
     </div>
   `;
 
   const accountBalances = !isAllAccounts ? '' : `
     <div class="finance-cat-breakdown">
-      <h3 style="margin-bottom:8px;">Zostatok podľa účtov</h3>
+      <h3 style="margin-bottom:8px;">Stav podľa účtov${range ? ' k ' + fmtDate(range.to) : ''}</h3>
       ${FINANCE_ACCOUNTS.map(a=>{
-        const accNet = entries.filter(e=>e.account===a.id)
-          .reduce((s,e)=> s + (e.type==='income' ? 1 : -1) * Number(e.amount||0), 0);
+        const accNet = accountStateOf(a.id, stateUpTo);
         return `
           <div class="finance-cat-row" style="cursor:default;">
             <span class="fcr-left">${a.label}</span>
@@ -3717,6 +3843,19 @@ function renderFinance(){
       });
     }
   }
+
+  const openingEditBtn = document.getElementById('fin-opening-edit');
+  if(openingEditBtn) openingEditBtn.addEventListener('click', ()=>{
+    if(viewingUid) return;
+    const cur = openingBalanceOf(financeAccountFilter);
+    const input = prompt(`Počiatočný zostatok pre ${accountLabel(financeAccountFilter)} (€), teda koľko bolo na účte pred prvým zapísaným záznamom:`, String(cur));
+    if(input === null) return;
+    const val = parseFloat(String(input).replace(',', '.').replace(/\s/g,''));
+    if(isNaN(val)){ alert('Zadaj platné číslo.'); return; }
+    state.finance.openingBalances[financeAccountFilter] = val;
+    scheduleSave();
+    renderFinance();
+  });
 
   const recurringToggleEl = document.getElementById('fin-recurring-toggle');
   if(recurringToggleEl) recurringToggleEl.addEventListener('click', ()=>{
